@@ -18,8 +18,18 @@ public static class DbInitializer
     {
         await context.Database.MigrateAsync();
 
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE academic.classes ADD COLUMN IF NOT EXISTS \"IsActive\" boolean NOT NULL DEFAULT true;");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"DB column patch note: {ex.Message}");
+        }
+
         if (await context.Schools.AnyAsync())
         {
+            await EnsureInstitutionalTiersAsync(context);
             return; // DB has already been seeded
         }
 
@@ -49,7 +59,18 @@ public static class DbInitializer
             Phone = "+880 1711-000000",
             IsActive = true
         };
-        context.Branches.Add(branch);
+
+        var branch2 = new Branch
+        {
+            Id = "br-02",
+            SchoolId = school.Id,
+            Code = "BR-02",
+            Name = "Uttara Campus",
+            Address = "Sector 4, Uttara, Dhaka",
+            Phone = "+880 1711-000002",
+            IsActive = true
+        };
+        context.Branches.AddRange(branch, branch2);
 
         var academicYear = new AcademicYear
         {
@@ -241,8 +262,8 @@ public static class DbInitializer
 
             // Reports Group
             new() { Code = "REPORTS", Name = "Reports & Analytics", Route = null, Icon = "insert_chart", Type = MenuType.Group, DisplayOrder = 7, IsActive = true, IsVisible = true },
-            new() { Code = "REP_ACADEMIC", Name = "Academic Performance", ParentCode = "REPORTS", Route = "/reports/academic", Icon = "analytics", Type = MenuType.Page, DisplayOrder = 1, IsActive = true, IsVisible = true },
-            new() { Code = "REP_FINANCE", Name = "Financial Ledger", ParentCode = "REPORTS", Route = "/reports/financial", Icon = "receipt_long", Type = MenuType.Page, DisplayOrder = 2, IsActive = true, IsVisible = true },
+            new() { Code = "REP_ACADEMIC", Name = "Academic Performance", ParentCode = "REPORTS", Route = "/app/reports/academic", Icon = "analytics", Type = MenuType.Page, DisplayOrder = 1, IsActive = true, IsVisible = true },
+            new() { Code = "REP_FINANCE", Name = "Financial Ledger", ParentCode = "REPORTS", Route = "/app/reports/financial", Icon = "receipt_long", Type = MenuType.Page, DisplayOrder = 2, IsActive = true, IsVisible = true },
 
             // Security Group
             new() { Code = "SECURITY", Name = "Security & RBAC", Route = null, Icon = "security", Type = MenuType.Group, DisplayOrder = 8, IsActive = true, IsVisible = true },
@@ -254,11 +275,14 @@ public static class DbInitializer
         context.Menus.AddRange(menus);
 
         // 5. Role Permissions
+        foreach (var permissionBranch in new[] { branch, branch2 })
         foreach (var m in menus)
         {
             // Super Admin gets all permissions
             context.RoleMenuPermissions.Add(new RoleMenuPermission
             {
+                SchoolId = school.Id,
+                BranchId = permissionBranch.Id,
                 RoleId = superAdminRole.Id,
                 MenuCode = m.Code,
                 View = true,
@@ -278,6 +302,8 @@ public static class DbInitializer
             {
                 context.RoleMenuPermissions.Add(new RoleMenuPermission
                 {
+                SchoolId = school.Id,
+                BranchId = permissionBranch.Id,
                     RoleId = teacherRole.Id,
                     MenuCode = m.Code,
                     View = true,
@@ -290,14 +316,37 @@ public static class DbInitializer
             }
 
             // Student Permissions
-            var studentAllowed = m.Code is "DASHBOARD" or "ACADEMICS" or "ACAD_ROUTINE"
+            var studentAllowed = m.Code is "DASHBOARD" or "STUDENTS" or "STU_LIST" or "ACADEMICS" or "ACAD_ROUTINE"
                 or "ATTENDANCE" or "ATT_REPORT" or "EXAMS" or "EXAM_RESULTS" or "FINANCE" or "FIN_COLLECTION";
 
             if (studentAllowed)
             {
                 context.RoleMenuPermissions.Add(new RoleMenuPermission
                 {
+                SchoolId = school.Id,
+                BranchId = permissionBranch.Id,
                     RoleId = studentRole.Id,
+                    MenuCode = m.Code,
+                    View = true,
+                    Create = false,
+                    Edit = false,
+                    Delete = false,
+                    Approve = false,
+                    Export = m.Code is "EXAM_RESULTS" or "FIN_COLLECTION"
+                });
+            }
+
+            // Guardian Permissions
+            var guardianAllowed = m.Code is "DASHBOARD" or "STUDENTS" or "STU_LIST" or "ACADEMICS" or "ACAD_ROUTINE"
+                or "ATTENDANCE" or "ATT_REPORT" or "EXAMS" or "EXAM_RESULTS" or "FINANCE" or "FIN_COLLECTION";
+
+            if (guardianAllowed)
+            {
+                context.RoleMenuPermissions.Add(new RoleMenuPermission
+                {
+                SchoolId = school.Id,
+                BranchId = permissionBranch.Id,
+                    RoleId = guardianRole.Id,
                     MenuCode = m.Code,
                     View = true,
                     Create = false,
@@ -314,6 +363,8 @@ public static class DbInitializer
             {
                 context.RoleMenuPermissions.Add(new RoleMenuPermission
                 {
+                SchoolId = school.Id,
+                BranchId = permissionBranch.Id,
                     RoleId = accountantRole.Id,
                     MenuCode = m.Code,
                     View = true,
@@ -615,6 +666,153 @@ public static class DbInitializer
         };
         context.AuditLogs.Add(audit);
 
+        // 16. Teacher Leave Applications
+        var leave1 = new TeacherLeaveApplication
+        {
+            Id = "tl-001",
+            SchoolId = school.Id,
+            BranchId = branch.Id,
+            TeacherId = "tch-01",
+            TeacherName = "Sarah Jenkins",
+            EmployeeCode = "EMP-101",
+            Department = "Science & Mathematics",
+            LeaveType = "Casual Leave",
+            StartDate = DateTime.UtcNow.AddDays(5),
+            EndDate = DateTime.UtcNow.AddDays(7),
+            TotalDays = 3,
+            Reason = "Family personal engagement and travel",
+            Status = "Approved",
+            AppliedOn = DateTime.UtcNow.AddDays(-2),
+            ReviewedBy = "admin",
+            ReviewRemark = "Approved. Substitute teacher assigned."
+        };
+        var leave2 = new TeacherLeaveApplication
+        {
+            Id = "tl-002",
+            SchoolId = school.Id,
+            BranchId = branch.Id,
+            TeacherId = "tch-02",
+            TeacherName = "Michael Chang",
+            EmployeeCode = "EMP-102",
+            Department = "Languages",
+            LeaveType = "Sick Leave",
+            StartDate = DateTime.UtcNow.AddDays(1),
+            EndDate = DateTime.UtcNow.AddDays(2),
+            TotalDays = 2,
+            Reason = "Medical consultation and recovery",
+            Status = "Pending",
+            AppliedOn = DateTime.UtcNow
+        };
+        context.TeacherLeaveApplications.AddRange(leave1, leave2);
+
+        // 17. Exam Schedules
+        var examSchedules = new List<ExamScheduleItem>
+        {
+            new() { Id = "ex-sch-01", SchoolId = school.Id, BranchId = branch.Id, ExamId = exam.Id, ClassId = "cls-10", ClassName = "Class 10", SubjectId = "sub-math", SubjectName = "Higher Mathematics", ExamDate = new DateTime(2026, 11, 10, 0, 0, 0, DateTimeKind.Utc), Day = "Tuesday", StartTime = "10:00 AM", EndTime = "01:00 PM", RoomNo = "Hall A", FullMarks = 100, PassMarks = 33 },
+            new() { Id = "ex-sch-02", SchoolId = school.Id, BranchId = branch.Id, ExamId = exam.Id, ClassId = "cls-10", ClassName = "Class 10", SubjectId = "sub-phys", SubjectName = "Physics", ExamDate = new DateTime(2026, 11, 12, 0, 0, 0, DateTimeKind.Utc), Day = "Thursday", StartTime = "10:00 AM", EndTime = "01:00 PM", RoomNo = "Hall A", FullMarks = 100, PassMarks = 33 },
+            new() { Id = "ex-sch-03", SchoolId = school.Id, BranchId = branch.Id, ExamId = exam.Id, ClassId = "cls-10", ClassName = "Class 10", SubjectId = "sub-chem", SubjectName = "Chemistry", ExamDate = new DateTime(2026, 11, 15, 0, 0, 0, DateTimeKind.Utc), Day = "Sunday", StartTime = "10:00 AM", EndTime = "01:00 PM", RoomNo = "Hall A", FullMarks = 100, PassMarks = 33 },
+            new() { Id = "ex-sch-04", SchoolId = school.Id, BranchId = branch.Id, ExamId = exam.Id, ClassId = "cls-10", ClassName = "Class 10", SubjectId = "sub-eng", SubjectName = "English Literature", ExamDate = new DateTime(2026, 11, 18, 0, 0, 0, DateTimeKind.Utc), Day = "Wednesday", StartTime = "10:00 AM", EndTime = "01:00 PM", RoomNo = "Hall B", FullMarks = 100, PassMarks = 33 },
+            new() { Id = "ex-sch-05", SchoolId = school.Id, BranchId = branch.Id, ExamId = exam.Id, ClassId = "cls-10", ClassName = "Class 10", SubjectId = "sub-ict", SubjectName = "Information Technology", ExamDate = new DateTime(2026, 11, 22, 0, 0, 0, DateTimeKind.Utc), Day = "Sunday", StartTime = "10:00 AM", EndTime = "01:00 PM", RoomNo = "Lab 1", FullMarks = 100, PassMarks = 33 }
+        };
+        context.ExamScheduleItems.AddRange(examSchedules);
+
+        // 18. SMS Templates & Logs
+        var smsTemplates = new List<SmsTemplate>
+        {
+            new() { Id = "tmpl-01", SchoolId = school.Id, BranchId = branch.Id, Title = "Tuition Fee Due Notice", Category = "Fee", Content = "Dear Guardian, Tuition fees for {MONTH} are due. Kindly settle via the portal or school cash counter. - Scholars Academy" },
+            new() { Id = "tmpl-02", SchoolId = school.Id, BranchId = branch.Id, Title = "Student Absence Alert", Category = "Attendance", Content = "Dear Guardian, Your ward {STUDENT_NAME} was absent today without prior notice. Please contact class teacher. - Principal" },
+            new() { Id = "tmpl-03", SchoolId = school.Id, BranchId = branch.Id, Title = "Exam Schedule Published", Category = "Exam", Content = "Dear Parents, Annual Examination schedule has been published on the academic portal. Check student dashboard." },
+            new() { Id = "tmpl-04", SchoolId = school.Id, BranchId = branch.Id, Title = "Institutional Holiday Notice", Category = "Emergency", Content = "The school will remain closed tomorrow due to an official institutional holiday. Classes resume on Sunday." }
+        };
+        context.SmsTemplates.AddRange(smsTemplates);
+
+        var smsLog = new SmsDispatchLog
+        {
+            Id = "sms-001",
+            SchoolId = school.Id,
+            BranchId = branch.Id,
+            RecipientGroup = "Class 10 Guardians",
+            RecipientCount = 45,
+            Message = "Dear Guardian, Monthly tuition fees for October are now due. Please clear before 15th Oct. - Scholars Academy",
+            SenderName = "Principal Office",
+            SentAt = DateTime.UtcNow.AddDays(-3),
+            Status = "Delivered",
+            CreditsUsed = 45
+        };
+        context.SmsDispatchLogs.Add(smsLog);
+
         await context.SaveChangesAsync();
+    }
+
+    public static async Task EnsureInstitutionalTiersAsync(ApplicationDbContext context)
+    {
+        var school = await context.Schools.FirstOrDefaultAsync();
+        if (school == null) return;
+        var branch = await context.Branches.FirstOrDefaultAsync(b => b.SchoolId == school.Id) 
+                     ?? new Branch { Id = "br-01", SchoolId = school.Id, Code = "BR-01", Name = "Main Campus", IsActive = true };
+
+        var requiredClasses = new (string Id, string Name, string Code, int SortOrder, string TeacherId, string TeacherName)[]
+        {
+            ("cls-01", "Play", "CLS-01", 1, "tch-002", "Kaniz Fatema"),
+            ("cls-02", "Narsari", "CLS-02", 2, "tch-003", "Rukhsana Akter"),
+            ("cls-03", "One", "CLS-03", 3, "tch-004", "Mizanur Rahman"),
+            ("cls-04", "Two", "CLS-04", 4, "tch-005", "Shahidul Islam"),
+            ("cls-05", "Three", "CLS-05", 5, "tch-006", "Jannatul Ferdous"),
+            ("cls-06", "Four", "CLS-06", 6, "tch-007", "Hasan Mahmud"),
+            ("cls-07", "Five", "CLS-07", 7, "tch-008", "Farzana Haque")
+        };
+
+        bool hasChanges = false;
+        foreach (var (id, name, code, order, teacherId, teacherName) in requiredClasses)
+        {
+            var existing = await context.Classes.FirstOrDefaultAsync(c => c.Code.ToLower() == code.ToLower() || c.Id == id);
+            if (existing == null)
+            {
+                var newClass = new SchoolClass
+                {
+                    Id = id,
+                    SchoolId = school.Id,
+                    BranchId = branch.Id,
+                    Name = name,
+                    Code = code,
+                    SortOrder = order,
+                    IsActive = true
+                };
+                context.Classes.Add(newClass);
+                hasChanges = true;
+
+                // Add standard sections
+                context.Sections.Add(new Section
+                {
+                    Id = $"sec-{id}-a",
+                    SchoolId = school.Id,
+                    BranchId = branch.Id,
+                    ClassId = id,
+                    ClassName = name,
+                    Name = "Section A",
+                    Capacity = 30,
+                    ClassTeacherId = teacherId,
+                    ClassTeacherName = teacherName
+                });
+
+                context.Sections.Add(new Section
+                {
+                    Id = $"sec-{id}-b",
+                    SchoolId = school.Id,
+                    BranchId = branch.Id,
+                    ClassId = id,
+                    ClassName = name,
+                    Name = "Section B",
+                    Capacity = 30,
+                    ClassTeacherId = teacherId,
+                    ClassTeacherName = teacherName
+                });
+            }
+        }
+
+        if (hasChanges)
+        {
+            await context.SaveChangesAsync();
+        }
     }
 }

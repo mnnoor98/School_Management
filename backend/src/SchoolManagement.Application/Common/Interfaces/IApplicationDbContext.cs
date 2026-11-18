@@ -41,6 +41,9 @@ public interface IApplicationDbContext
 
     // Employee
     DbSet<Teacher> Teachers { get; }
+    DbSet<TeacherLeaveApplication> TeacherLeaveApplications { get; }
+    DbSet<SalaryStructure> SalaryStructures { get; }
+    DbSet<EmployeePayroll> EmployeePayrolls { get; }
 
     // Attendance
     DbSet<AttendanceRecord> AttendanceRecords { get; }
@@ -49,16 +52,25 @@ public interface IApplicationDbContext
     // Exam
     DbSet<Exam> Exams { get; }
     DbSet<ExamMark> ExamMarks { get; }
+    DbSet<ExamScheduleItem> ExamScheduleItems { get; }
 
     // Finance
     DbSet<FeeType> FeeTypes { get; }
     DbSet<FeeStructure> FeeStructures { get; }
     DbSet<StudentInvoice> StudentInvoices { get; }
     DbSet<FeePayment> FeePayments { get; }
+    DbSet<ExpenseCategory> ExpenseCategories { get; }
+    DbSet<ExpenseVoucher> ExpenseVouchers { get; }
+    DbSet<ExpenseVoucherItem> ExpenseVoucherItems { get; }
+    DbSet<BankAccount> BankAccounts { get; }
+    DbSet<BankTransaction> BankTransactions { get; }
+    DbSet<PettyCashVoucher> PettyCashVouchers { get; }
 
     // System
     DbSet<AuditLog> AuditLogs { get; }
     DbSet<Notice> Notices { get; }
+    DbSet<SmsTemplate> SmsTemplates { get; }
+    DbSet<SmsDispatchLog> SmsDispatchLogs { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -1,16 +1,17 @@
+import { CampusImageDirective } from '../shared/components/campus-image.directive';
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
-import { MockDbService } from '../core/services/mock-db.service';
+import { AdminStoreService } from '../core/services/stores/admin-store.service';
 import { IconComponent } from '../shared/components/icon.component';
 import { ToastContainerComponent } from '../shared/components/toast-container.component';
 
 @Component({
   selector: 'app-auth-layout',
   standalone: true,
-  imports: [CommonModule, FormsModule, IconComponent, ToastContainerComponent],
+  imports: [CampusImageDirective, CommonModule, FormsModule, IconComponent, ToastContainerComponent],
   template: `
     <app-toast-container></app-toast-container>
     <div class="login-wrapper">
@@ -42,7 +43,7 @@ import { ToastContainerComponent } from '../shared/components/toast-container.co
                 [class.active]="username === u.username"
                 (click)="selectPersona(u.username)"
               >
-                <img [src]="u.avatar" [alt]="u.fullName" class="chip-avatar" />
+                <img campusImage [src]="u.avatar" [alt]="u.fullName" class="chip-avatar" />
                 <div class="chip-info">
                   <span class="chip-role">{{ u.roleName }}</span>
                   <span class="chip-name">{{ u.fullName }}</span>
@@ -395,7 +396,7 @@ import { ToastContainerComponent } from '../shared/components/toast-container.co
 })
 export class AuthLayoutComponent {
   private auth = inject(AuthService);
-  private db = inject(MockDbService);
+  private db = inject(AdminStoreService);
 
   school = this.db.getSchool();
   demoUsers = [

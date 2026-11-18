@@ -2,8 +2,9 @@ using SchoolManagement.Domain.Common;
 
 namespace SchoolManagement.Domain.Exam;
 
-public class ExamMark : BaseEntity, ISchoolScopedEntity
+public class ExamMark : BaseEntity, ICampusScopedEntity
 {
+    public string BranchId { get; set; } = "br-01";
     public string SchoolId { get; set; } = "sch-01";
     public string ExamId { get; set; } = string.Empty;
     public string StudentId { get; set; } = string.Empty;

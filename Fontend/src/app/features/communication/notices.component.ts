@@ -1,7 +1,8 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MockDbService } from '../../core/services/mock-db.service';
+import { SystemStoreService } from '../../core/services/stores/system-store.service';
+import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Notice } from '../../core/models';
 import { BadgeComponent } from '../../shared/components/badge.component';
@@ -155,8 +156,10 @@ import { ModalComponent } from '../../shared/components/modal.component';
   `]
 })
 export class NoticesComponent implements OnInit {
-  private db = inject(MockDbService);
+  private systemStore = inject(SystemStoreService);
+  private auth = inject(AuthService);
   private toast = inject(ToastService);
+  private cdr = inject(ChangeDetectorRef);
 
   notices: Notice[] = [];
   isModalOpen = false;
@@ -170,14 +173,21 @@ export class NoticesComponent implements OnInit {
   };
 
   ngOnInit() {
-    this.db.getNotices$().subscribe(list => {
+    this.systemStore.loadNotices().then(list => {
       this.notices = list;
+      this.cdr.markForCheck();
+    });
+
+    this.systemStore.getNotices$().subscribe(list => {
+      this.notices = list;
+      this.cdr.markForCheck();
     });
   }
 
   publishNotice() {
     if (!this.newNotice.title) return;
-    this.db.addNotice(this.newNotice);
+    const authorName = this.auth.getCurrentUser()?.fullName || 'Principal Office';
+    this.systemStore.addNotice(this.newNotice, authorName);
     this.toast.success('Notice Published', `"${this.newNotice.title}" has been broadcast.`);
     this.isModalOpen = false;
     this.newNotice = {
@@ -187,5 +197,6 @@ export class NoticesComponent implements OnInit {
       content: '',
       isImportant: false
     };
+    this.cdr.markForCheck();
   }
 }

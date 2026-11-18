@@ -1,7 +1,7 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MockDbService } from '../../core/services/mock-db.service';
+import { AdminStoreService } from '../../core/services/stores/admin-store.service';
 import { ToastService } from '../../core/services/toast.service';
 import { MenuItem, MenuType } from '../../core/models';
 import { ModalComponent } from '../../shared/components/modal.component';
@@ -424,8 +424,9 @@ import { IconComponent } from '../../shared/components/icon.component';
   `]
 })
 export class MenuManagementComponent implements OnInit {
-  private db = inject(MockDbService);
+  private db = inject(AdminStoreService);
   private toast = inject(ToastService);
+  private cdr = inject(ChangeDetectorRef);
 
   menus: MenuItem[] = [];
   searchTerm = '';
@@ -450,6 +451,7 @@ export class MenuManagementComponent implements OnInit {
     this.db.getMenus$().subscribe(list => {
       this.menus = list;
     });
+    this.db.loadMenus();
   }
 
   get groupMenus(): MenuItem[] {
@@ -504,6 +506,7 @@ export class MenuManagementComponent implements OnInit {
   toggleActive(item: MenuItem) {
     this.db.toggleMenuStatus(item.id);
     this.toast.info('Status Updated', `${item.name} is now ${!item.isActive ? 'Active' : 'Inactive'}`);
+    this.cdr.markForCheck();
   }
 
   saveMenuForm() {
@@ -516,6 +519,7 @@ export class MenuManagementComponent implements OnInit {
     if (res.success) {
       this.toast.success('Success', res.message);
       this.isModalOpen = false;
+      this.cdr.markForCheck();
     } else {
       this.toast.error('Error', res.message);
     }

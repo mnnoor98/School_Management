@@ -2,6 +2,7 @@ namespace SchoolManagement.Application.Exams.DTOs;
 
 public class ExamDto
 {
+    public string BranchId { get; set; } = string.Empty;
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Term { get; set; } = string.Empty;
@@ -13,6 +14,7 @@ public class ExamDto
 
 public class ExamMarkDto
 {
+    public string BranchId { get; set; } = string.Empty;
     public string Id { get; set; } = string.Empty;
     public string ExamId { get; set; } = string.Empty;
     public string StudentId { get; set; } = string.Empty;
@@ -24,9 +26,14 @@ public class ExamMarkDto
     public string SubjectName { get; set; } = string.Empty;
     public decimal FullMarks { get; set; }
     public decimal ObtainedMarks { get; set; }
+    public decimal TheoryMarks { get; set; }
+    public decimal McqMarks { get; set; }
+    public decimal PracticalMarks { get; set; }
+    public bool IsAbsent { get; set; }
     public string Grade { get; set; } = string.Empty;
     public decimal GradePoint { get; set; }
     public bool IsPass { get; set; }
+    public string? Remark { get; set; }
 }
 
 public class StudentMarksheetDto
@@ -55,5 +62,32 @@ public class SaveExamMarksRequest
 public class StudentMarkInput
 {
     public string StudentId { get; set; } = string.Empty;
+    public string? StudentName { get; set; }
+    public string? RollNo { get; set; }
     public decimal ObtainedMarks { get; set; }
+    public decimal TheoryMarks { get; set; }
+    public decimal McqMarks { get; set; }
+    public decimal PracticalMarks { get; set; }
+    public bool IsAbsent { get; set; }
+    public string? Remark { get; set; }
+}
+
+public class ExamCreateRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string Term { get; set; } = string.Empty;
+    public string AcademicYear { get; set; } = string.Empty;
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public bool IsPublished { get; set; } = false;
+}
+
+public class ExamUpdateRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string Term { get; set; } = string.Empty;
+    public string AcademicYear { get; set; } = string.Empty;
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public bool IsPublished { get; set; }
 }

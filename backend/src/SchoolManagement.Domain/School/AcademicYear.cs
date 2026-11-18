@@ -2,8 +2,9 @@ using SchoolManagement.Domain.Common;
 
 namespace SchoolManagement.Domain.School;
 
-public class AcademicYear : BaseEntity, ISchoolScopedEntity
+public class AcademicYear : BaseEntity, ICampusScopedEntity
 {
+    public string BranchId { get; set; } = "br-01";
     public string SchoolId { get; set; } = "sch-01";
     public string Name { get; set; } = string.Empty;
     public DateTime StartDate { get; set; }

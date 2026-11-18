@@ -1,7 +1,7 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MockDbService } from '../../core/services/mock-db.service';
+import { SystemStoreService } from '../../core/services/stores/system-store.service';
 import { AuditLog } from '../../core/models';
 import { BadgeComponent } from '../../shared/components/badge.component';
 import { IconComponent } from '../../shared/components/icon.component';
@@ -180,14 +180,23 @@ import { IconComponent } from '../../shared/components/icon.component';
   `]
 })
 export class AuditLogComponent implements OnInit {
-  private db = inject(MockDbService);
+  private systemStore = inject(SystemStoreService);
+  private cdr = inject(ChangeDetectorRef);
 
   logs: AuditLog[] = [];
   searchTerm = '';
   selectedAction = 'ALL';
 
   ngOnInit() {
-    this.logs = this.db.getAuditLogs();
+    this.systemStore.loadAuditLogs().then(logs => {
+      this.logs = logs;
+      this.cdr.markForCheck();
+    });
+
+    this.systemStore.getAuditLogs$().subscribe(logs => {
+      this.logs = logs;
+      this.cdr.markForCheck();
+    });
   }
 
   get filteredLogs(): AuditLog[] {

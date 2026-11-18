@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
+import { BehaviorSubject, Observable, firstValueFrom, fromEvent, timer } from 'rxjs';
 import { User, MenuItem, PermissionAction } from '../models';
 import { MockDbService } from './mock-db.service';
 import { ToastService } from './toast.service';
@@ -29,15 +29,66 @@ export class AuthService {
   private db = inject(MockDbService);
   private toast = inject(ToastService);
 
-  private readonly API_URL = 'http://localhost:5000/api/v1';
+  private readonly API_URL = '/api/v1';
   private readonly TOKEN_KEY = 'sms_auth_token';
   private _isAuthenticated$ = new BehaviorSubject<boolean>(this.checkInitialAuth());
   private currentUser$ = new BehaviorSubject<User | null>(this.db.getCurrentUser());
+  readonly ready: Promise<void>;
 
   constructor() {
+    const cached = this.db.getCurrentUser();
+    if (cached && cached.id) {
+      this.currentUser$.next(cached);
+      this._isAuthenticated$.next(true);
+    }
     this.db.getCurrentUser$().subscribe(u => {
       this.currentUser$.next(u);
     });
+    this.ready = this.restoreSession();
+    const refresh = () => { if (this.isAuthenticated() && this.db.getCurrentUser().id) void this.refreshMenuAccess(); };
+    fromEvent(window, 'focus').subscribe(refresh);
+    timer(30000, 30000).subscribe(refresh);
+  }
+
+  private async restoreSession() {
+    const token = localStorage.getItem(this.TOKEN_KEY);
+    if (!token) {
+      this._isAuthenticated$.next(false);
+      return;
+    }
+
+    try {
+      const response = await firstValueFrom(this.http.get<ApiResponse<User>>(`${this.API_URL}/auth/me`));
+      if (response && response.success && response.data) {
+        this.db.setCurrentUser(response.data);
+        this._isAuthenticated$.next(true);
+      } else {
+        // If response is not success, do not blindly clear session unless 401
+        this._isAuthenticated$.next(true);
+      }
+    } catch (err: any) {
+      // ONLY log out and purge token if it is explicitly 401 Unauthorized or 403 Forbidden
+      if (err?.status === 401 || err?.status === 403) {
+        console.warn('Authentication token expired or rejected by server:', err);
+        localStorage.removeItem(this.TOKEN_KEY);
+        this.db.clearSession();
+        this._isAuthenticated$.next(false);
+        return;
+      }
+      // If server returned 500 or offline/timeout or cancelled observable, retain authenticated state!
+      console.warn('Session restore network/server warning, keeping credentials:', err);
+      this._isAuthenticated$.next(true);
+    }
+
+    // Safely load background catalogs and menus without risking session termination
+    try {
+      await Promise.allSettled([
+        this.db.refreshAllFromBackend(),
+        this.db.refreshAuthorizedMenus()
+      ]);
+    } catch (e) {
+      console.warn('Background sync warning during session restore:', e);
+    }
   }
 
   private checkInitialAuth(): boolean {
@@ -114,6 +165,7 @@ export class AuthService {
     }
 
     localStorage.removeItem(this.TOKEN_KEY);
+    this.db.clearSession();
     this._isAuthenticated$.next(false);
     this.toast.info('Logged Out', 'You have been safely signed out.');
     this.router.navigate(['/login']);
@@ -125,5 +177,71 @@ export class AuthService {
 
   getMyMenus(): MenuItem[] {
     return this.db.getMyMenuTree();
+  }
+
+  async refreshMenuAccess(enforceCurrentRoute = true) {
+    await this.db.refreshAuthorizedMenus();
+    if (!enforceCurrentRoute) return;
+    let route = this.router.routerState.snapshot.root;
+    while (route.firstChild) route = route.firstChild;
+    const code = route.data['permissionCode'] as string | undefined;
+    if (code && this.router.url.startsWith('/app/') && !this.router.url.startsWith('/app/dashboard') && !this.db.hasPermission(code, 'view')) {
+      await this.router.navigate(['/app/dashboard']);
+    }
+  }
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<boolean> {
+    try {
+      const res = await firstValueFrom(
+        this.http.post<ApiResponse<boolean>>(`${this.API_URL}/users/change-password`, {
+          currentPassword,
+          newPassword
+        })
+      );
+      if (res && res.success) {
+        this.toast.success('Password Updated', 'Your account password has been changed successfully.');
+        return true;
+      }
+      this.toast.error('Update Failed', res?.message || 'Could not change password.');
+      return false;
+    } catch (err: any) {
+      const msg = err?.error?.message || err?.error?.title || 'Incorrect current password or server error.';
+      this.toast.error('Error', msg);
+      return false;
+    }
+  }
+
+  async updateProfile(data: Partial<User>): Promise<boolean> {
+    try {
+      const res = await firstValueFrom(
+        this.http.put<ApiResponse<User>>(`${this.API_URL}/users/my-profile`, data)
+      );
+      if (res && res.success && res.data) {
+        this.db.setCurrentUser(res.data);
+        this.toast.success('Profile Saved', 'Personal information updated successfully.');
+        return true;
+      }
+    } catch (err: any) {
+      this.toast.error('Profile not saved', err?.error?.message || err?.error?.detail || 'Please try again.');
+    }
+    return false;
+  }
+
+  async uploadFile(file: File, folder: string = 'general'): Promise<{ url: string; fileName: string } | null> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('folder', folder);
+
+    try {
+      const res = await firstValueFrom(
+        this.http.post<ApiResponse<{ url: string; fileName: string }>>(`${this.API_URL}/files/upload`, formData)
+      );
+      if (res && res.success && res.data) {
+        return res.data;
+      }
+    } catch (err: any) {
+      this.toast.error('Upload failed', err?.error?.message || 'The file could not be uploaded.');
+    }
+    return null;
   }
 }

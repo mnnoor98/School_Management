@@ -2,8 +2,10 @@ using SchoolManagement.Domain.Common;
 
 namespace SchoolManagement.Domain.Auth;
 
-public class RoleMenuPermission : BaseEntity
+public class RoleMenuPermission : BaseEntity, ICampusScopedEntity
 {
+    public string SchoolId { get; set; } = "sch-01";
+    public string BranchId { get; set; } = "br-01";
     public string RoleId { get; set; } = string.Empty;
     public string MenuCode { get; set; } = string.Empty;
     public bool View { get; set; } = true;

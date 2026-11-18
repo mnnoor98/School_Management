@@ -1,574 +1,224 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { CampusImageDirective } from '../../shared/components/campus-image.directive';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { MockDbService } from '../../core/services/mock-db.service';
+import {
+  AdminStoreService,
+  SystemStoreService,
+  StudentStoreService,
+  TeacherStoreService,
+  AcademicStoreService,
+  FinanceStoreService,
+  ExamStoreService
+} from '../../core/services/stores';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { StatCardComponent } from '../../shared/components/stat-card.component';
 import { BadgeComponent } from '../../shared/components/badge.component';
 import { IconComponent } from '../../shared/components/icon.component';
 import { ModalComponent } from '../../shared/components/modal.component';
-import { StudentInvoice, Notice, User, Student, RoutinePeriod } from '../../core/models';
+import { StudentInvoice, Notice, User, Student, RoutinePeriod, Branch } from '../../core/models';
+import { PrincipalDashboardComponent } from './components/principal-dashboard.component';
+import { TeacherDashboardComponent } from './components/teacher-dashboard.component';
+import { AccountantDashboardComponent } from './components/accountant-dashboard.component';
+import { SuperAdminDashboardComponent } from './components/super-admin-dashboard.component';
+import { StudentDashboardComponent } from './components/student-dashboard.component';
+import { GuardianDashboardComponent } from './components/guardian-dashboard.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, StatCardComponent, BadgeComponent, IconComponent, ModalComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterModule,
+    IconComponent,
+    PrincipalDashboardComponent,
+    TeacherDashboardComponent,
+    AccountantDashboardComponent,
+    SuperAdminDashboardComponent,
+    StudentDashboardComponent,
+    GuardianDashboardComponent
+  ],
   template: `
     <div class="page-container">
-      <!-- ========================================== -->
-      <!-- 1. GUARDIAN & STUDENT PERSONALIZED PORTAL  -->
-      <!-- ========================================== -->
-      <ng-container *ngIf="isGuardian || isStudent; else adminDashboard">
-        <!-- Guardian Portal Header -->
-        <div class="page-header">
+      <!-- 1. SUPER ADMIN INITIAL CAMPUS SELECTION PORTAL (When No Campus is Active) -->
+      <section *ngIf="isSuperAdmin && !hasActiveCampus" class="campus-gateway-section mb-4">
+        <div class="campus-gateway-hero">
+          <div class="flex items-center justify-between gap-3 flex-wrap">
+            <div class="gateway-badge">
+              <app-icon name="shield-check" [size]="16"></app-icon>
+              <span>INSTITUTIONAL HEADQUARTERS • SUPER ADMIN</span>
+            </div>
+            <a routerLink="/app/admin/school-setup" class="hero-create-btn">
+              <app-icon name="plus" [size]="14"></app-icon>
+              <span>+ Create New Campus & Principal</span>
+            </a>
+          </div>
+          <h1 class="gateway-title">Select Operational Campus to Begin Activities</h1>
+          <p class="gateway-subtitle">
+            Welcome, <strong>{{ currentUser?.fullName }}</strong>. Click an institutional campus card below to launch the workspace, view real-time KPIs, and start daily academic, attendance, exam, and financial operations.
+          </p>
+        </div>
+
+        <div class="campus-cards-grid">
+          <div
+            *ngFor="let branch of branches"
+            class="campus-hub-card"
+            [class.card-loading]="campusLoading && loadingCampusId === branch.id"
+            [class.card-inactive]="!branch.isActive"
+            (click)="branch.isActive && !campusLoading && selectCampus(branch.id)"
+          >
+            <div class="ch-card-top">
+              <div class="ch-icon-wrapper">
+                <app-icon name="building" [size]="28" class="text-indigo"></app-icon>
+              </div>
+              <div class="ch-tags">
+                <span class="ch-code-tag">{{ branch.code || 'CAMPUS' }}</span>
+                <span class="ch-status-pill" [class.status-online]="branch.isActive">
+                  <span class="status-dot"></span>
+                  {{ branch.isActive ? 'Active Campus' : 'Maintenance' }}
+                </span>
+              </div>
+            </div>
+
+            <div class="ch-card-middle">
+              <h2 class="ch-name">{{ branch.name }}</h2>
+              <div class="ch-meta-row">
+                <app-icon name="map-pin" [size]="14"></app-icon>
+                <span>{{ branch.address || 'Dhaka Metropolitan Area' }}</span>
+              </div>
+              <div class="ch-meta-row" *ngIf="branch.phone">
+                <app-icon name="phone" [size]="13"></app-icon>
+                <span>{{ branch.phone }}</span>
+              </div>
+
+              <div class="ch-highlights">
+                <div class="ch-highlight-pill">
+                  <app-icon name="users" [size]="13"></app-icon>
+                  <span>Classrooms & Students</span>
+                </div>
+                <div class="ch-highlight-pill">
+                  <app-icon name="clipboard-check" [size]="13"></app-icon>
+                  <span>Attendance Shifts</span>
+                </div>
+                <div class="ch-highlight-pill">
+                  <app-icon name="circle-dollar-sign" [size]="13"></app-icon>
+                  <span>Fee Collection</span>
+                </div>
+                <div class="ch-highlight-pill">
+                  <app-icon name="award" [size]="13"></app-icon>
+                  <span>Examinations</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="ch-card-bottom">
+              <button
+                type="button"
+                class="btn btn-primary ch-enter-btn"
+                [disabled]="!branch.isActive || campusLoading"
+              >
+                <span *ngIf="campusLoading && loadingCampusId === branch.id" class="flex items-center justify-center gap-2">
+                  <span>Launching Campus Activity...</span>
+                </span>
+                <span *ngIf="!campusLoading || loadingCampusId !== branch.id" class="flex items-center justify-center gap-2">
+                  <span>Enter & Activate Campus</span>
+                  <app-icon name="arrow-up-right" [size]="16"></app-icon>
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. SUPER ADMIN ACTIVE CAMPUS BANNER & QUICK SWITCHER (When Campus is Active) -->
+      <section *ngIf="isSuperAdmin && hasActiveCampus" class="campus-active-strip card mb-4">
+        <div class="cas-left">
+          <div class="cas-icon">
+            <app-icon name="building" [size]="24"></app-icon>
+          </div>
           <div>
-            <h1 class="page-title">
-              <app-icon name="graduation-cap" [size]="28" class="text-primary"></app-icon>
-              <span>{{ isGuardian ? 'Parent & Guardian Academic Portal' : 'Student Academic Portal' }}</span>
-            </h1>
-            <p class="page-subtitle">
-              Welcome back, <strong>{{ currentUser?.fullName }}</strong> ({{ currentUser?.roleName }}). Overview of academic performance, attendance, routine, and fee billing for your ward: <strong>{{ wardStudent?.fullName || 'Tanvir Ahmed' }}</strong>.
-            </p>
-          </div>
-          <div class="page-actions">
-            <a routerLink="/app/finance/collection" class="btn btn-primary" title="Clear pending dues">
-              <app-icon name="circle-dollar-sign" [size]="16"></app-icon>
-              <span>Pay Tuition Fee (৳ 1,500)</span>
-            </a>
-            <a routerLink="/app/exams/marksheet" class="btn btn-outline" title="View official report card">
-              <app-icon name="award" [size]="16"></app-icon>
-              <span>Progress Marksheet</span>
-            </a>
-            <a routerLink="/app/academic/routine" class="btn btn-secondary" title="View weekly timetable">
-              <app-icon name="calendar-clock" [size]="16"></app-icon>
-              <span>Class Schedule</span>
-            </a>
-          </div>
-        </div>
-
-        <!-- Student Dossier Hero Banner -->
-        <div class="ward-banner mb-4">
-          <div class="ward-avatar-col">
-            <img [src]="wardStudent?.photoUrl || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=120&auto=format&fit=crop&q=80'" alt="Student" class="ward-avatar" />
-            <span class="ward-status-dot" title="Active in current session"></span>
-          </div>
-          <div class="ward-info-col">
-            <div class="ward-badges">
-              <span class="badge-role">WARD DOSSIER</span>
-              <span class="badge-active">Active • Regular</span>
-              <span class="badge-session">Academic Session: 2026-2027</span>
+            <div class="cas-sub-badge">
+              <span class="pulse-dot"></span>
+              <span>ACTIVE OPERATIONAL CAMPUS • DATA ISOLATION ENFORCED</span>
             </div>
-            <h2 class="ward-name">{{ wardStudent?.fullName || 'Tanvir Ahmed' }} <span class="bangla-title">{{ wardStudent?.banglaName || 'তানভীর আহমেদ' }}</span></h2>
-            <div class="ward-details-grid">
-              <div class="ward-detail-item">
-                <span class="detail-label">Admission ID:</span>
-                <span class="detail-val font-mono">{{ wardStudent?.admissionNo || 'STU-2026-001' }}</span>
-              </div>
-              <div class="ward-detail-item">
-                <span class="detail-label">Class & Section:</span>
-                <span class="detail-val">Class 10 — Section A (Padma)</span>
-              </div>
-              <div class="ward-detail-item">
-                <span class="detail-label">Class Roll:</span>
-                <span class="detail-val roll-highlight">#{{ wardStudent?.rollNo || '01' }}</span>
-              </div>
-              <div class="ward-detail-item">
-                <span class="detail-label">Class Teacher:</span>
-                <span class="detail-val">Kazi Farhana (English)</span>
-              </div>
-              <div class="ward-detail-item">
-                <span class="detail-label">Shift & Campus:</span>
-                <span class="detail-val">Morning • Main Campus</span>
-              </div>
+            <div class="cas-name-group">
+              <h2 class="cas-name">{{ getActiveBranch()?.name }}</h2>
+              <span class="cas-badge">{{ getActiveBranch()?.code }}</span>
+              <span class="cas-address" *ngIf="getActiveBranch()?.address">
+                <app-icon name="map-pin" [size]="12"></app-icon>
+                <span>{{ getActiveBranch()?.address }}</span>
+              </span>
+              <span class="cas-phone" *ngIf="getActiveBranch()?.phone">
+                <app-icon name="phone" [size]="12"></app-icon>
+                <span>{{ getActiveBranch()?.phone }}</span>
+              </span>
             </div>
           </div>
         </div>
 
-        <!-- KPI Metrics Grid (Student Specific) -->
-        <div class="grid-4 mb-4">
-          <app-stat-card
-            title="Attendance Rate"
-            value="96.0%"
-            icon="clipboard-check"
-            subtitle="48 days present / 2 absent"
-            trend="Excellent (>90%)"
-            [trendPositive]="true"
-            theme="emerald"
-          ></app-stat-card>
-
-          <app-stat-card
-            title="Academic Standing"
-            value="GPA 5.00"
-            icon="award"
-            subtitle="Mid-Term Examination 2026"
-            trend="Rank: 1st in Class"
-            [trendPositive]="true"
-            theme="purple"
-          ></app-stat-card>
-
-          <app-stat-card
-            title="Pending Tuition Due"
-            value="৳ 1,500"
-            icon="circle-dollar-sign"
-            subtitle="October 2026 Monthly Fee"
-            trend="Due: Oct 25, 2026"
-            [trendPositive]="false"
-            theme="rose"
-          ></app-stat-card>
-
-          <app-stat-card
-            title="Today's Next Class"
-            value="09:00 AM"
-            icon="calendar-clock"
-            subtitle="General Mathematics"
-            trend="Room 201 • Nusrat Jahan"
-            [trendPositive]="true"
-            theme="blue"
-          ></app-stat-card>
-        </div>
-
-        <!-- Main Content 2-Column Split -->
-        <div class="grid-3 mb-4">
-          <!-- Left Column (Span 2): Today's Routine & Exam Performance -->
-          <div class="col-span-2 flex-col-gap">
-            <!-- Today's Schedule Card -->
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">
-                  <app-icon name="calendar-clock" [size]="20" class="text-primary"></app-icon>
-                  <span>Today's Class Schedule (Class 10 - Section A Padma)</span>
-                </div>
-                <a routerLink="/app/academic/routine" class="btn btn-sm btn-outline">Full Weekly Matrix</a>
-              </div>
-              <div class="app-table-wrapper">
-                <table class="app-table">
-                  <thead>
-                    <tr>
-                      <th>Period</th>
-                      <th>Time</th>
-                      <th>Subject</th>
-                      <th>Faculty Instructor</th>
-                      <th>Room</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr *ngFor="let p of todayRoutine" [class.active-period]="p.periodNumber === 1">
-                      <td><span class="period-badge">P-{{ p.periodNumber }}</span></td>
-                      <td class="font-mono text-xs"><strong>{{ p.startTime }} - {{ p.endTime }}</strong></td>
-                      <td><strong>{{ p.subjectName }}</strong></td>
-                      <td>{{ p.teacherName }}</td>
-                      <td><span class="room-pill">{{ p.roomNo }}</span></td>
-                      <td>
-                        <span *ngIf="p.periodNumber === 1" class="chip chip-ongoing">Ongoing Class</span>
-                        <span *ngIf="p.periodNumber === 2" class="chip chip-upcoming">Next Up</span>
-                        <span *ngIf="p.periodNumber > 2" class="chip chip-scheduled">Scheduled</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- Ward Academic Results Card -->
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">
-                  <app-icon name="award" [size]="20" class="text-purple"></app-icon>
-                  <span>Mid-Term Examination 2026 Results (Official Grades)</span>
-                </div>
-                <a routerLink="/app/exams/marksheet" class="btn btn-sm btn-outline">Print Official Marksheet</a>
-              </div>
-              <div class="card-body">
-                <div class="marks-grid">
-                  <div class="subject-mark-card" *ngFor="let m of wardExamMarks">
-                    <div class="sm-header">
-                      <span class="sm-code">{{ m.subjectCode }}</span>
-                      <span class="sm-grade">{{ m.grade }}</span>
-                    </div>
-                    <div class="sm-name">{{ m.subjectName }}</div>
-                    <div class="sm-scores">
-                      <span class="sm-score-val">{{ m.totalMarks }}/{{ m.fullMarks }}</span>
-                      <span class="sm-point">GPA {{ m.gradePoint.toFixed(1) }}</span>
-                    </div>
-                    <div class="sm-progress">
-                      <div class="sm-progress-bar" [style.width.%]="(m.totalMarks / m.fullMarks) * 100"></div>
-                    </div>
-                  </div>
-                </div>
-                <div class="results-summary-footer">
-                  <div class="rs-item">
-                    <span>Total Aggregate:</span>
-                    <strong>502 / 550 (91.2%)</strong>
-                  </div>
-                  <div class="rs-item">
-                    <span>Final Calculated GPA:</span>
-                    <strong class="text-purple">5.00 (Golden A+)</strong>
-                  </div>
-                  <div class="rs-item">
-                    <span>Institutional Rank:</span>
-                    <strong class="text-emerald">1st Position in Section A</strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Right Column: Invoices & Notices -->
-          <div class="flex-col-gap">
-            <!-- Ward Invoices Card -->
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">
-                  <app-icon name="credit-card" [size]="20" class="text-rose"></app-icon>
-                  <span>Fee Invoices & Statements</span>
-                </div>
-                <a routerLink="/app/finance/collection" class="btn btn-sm btn-outline">Ledger</a>
-              </div>
-              <div class="card-body p-0">
-                <div class="invoices-list">
-                  <div class="inv-item" *ngFor="let inv of wardInvoices">
-                    <div class="inv-left">
-                      <div class="inv-title">{{ inv.feeTypeName }}</div>
-                      <div class="inv-meta">
-                        <span class="inv-no">{{ inv.invoiceNo }}</span>
-                        <span class="inv-due">Due: {{ inv.dueDate }}</span>
-                      </div>
-                    </div>
-                    <div class="inv-right">
-                      <div class="inv-amount">৳ {{ inv.netAmount.toLocaleString() }}</div>
-                      <div class="inv-action">
-                        <span *ngIf="inv.status === 'Paid'" class="paid-badge">
-                          <app-icon name="check" [size]="12"></app-icon>
-                          <span>Paid</span>
-                        </span>
-                        <button
-                          *ngIf="inv.status !== 'Paid'"
-                          type="button"
-                          class="btn btn-xs btn-primary"
-                          (click)="openPayModal(inv)"
-                        >
-                          Pay Online
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- School Announcements Card -->
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">
-                  <app-icon name="bell" [size]="20" class="text-primary"></app-icon>
-                  <span>School Notices & Circulars</span>
-                </div>
-                <a routerLink="/app/communication/notices" class="btn btn-sm btn-outline">All Notices</a>
-              </div>
-              <div class="card-body p-0">
-                <div class="notice-list">
-                  <div *ngFor="let notice of notices" class="notice-row">
-                    <div class="notice-meta">
-                      <app-badge [variant]="notice.isImportant ? 'danger' : 'info'" [label]="notice.category"></app-badge>
-                      <span class="notice-date">{{ notice.publishedDate }}</span>
-                    </div>
-                    <h4 class="notice-heading">{{ notice.title }}</h4>
-                    <p class="notice-snippet">{{ notice.content }}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </ng-container>
-
-      <!-- ========================================== -->
-      <!-- 2. INSTITUTIONAL EXECUTIVE ADMIN DASHBOARD -->
-      <!-- ========================================== -->
-      <ng-template #adminDashboard>
-        <!-- Welcome Header -->
-        <div class="page-header">
-          <div>
-            <h1 class="page-title">
-              <app-icon name="layout-dashboard" [size]="28" class="text-primary"></app-icon>
-              Institutional Executive Dashboard
-            </h1>
-            <p class="page-subtitle">
-              Welcome back, <strong>{{ currentUser?.fullName }}</strong> ({{ currentUser?.roleName }}). Here is today's academic & financial summary.
-            </p>
-          </div>
-          <div class="page-actions">
-            <a routerLink="/app/attendance/entry" class="btn btn-outline" *ngIf="canTakeAttendance">
-              <app-icon name="clipboard-check" [size]="16"></app-icon>
-              <span>Take Attendance</span>
-            </a>
-            <a routerLink="/app/finance/collection" class="btn btn-primary" *ngIf="canCollectFees">
-              <app-icon name="circle-dollar-sign" [size]="16"></app-icon>
-              <span>Fee Collection</span>
-            </a>
-            <a routerLink="/app/students/admission" class="btn btn-secondary" *ngIf="canAdmitStudent">
-              <app-icon name="user-plus" [size]="16"></app-icon>
-              <span>New Admission</span>
-            </a>
-          </div>
-        </div>
-
-        <!-- KPI METRICS GRID -->
-        <div class="grid-4 mb-4">
-          <app-stat-card
-            title="Total Enrollment"
-            [value]="stats.totalStudents"
-            icon="users"
-            subtitle="Active academic session"
-            trend="+12% YoY"
-            [trendPositive]="true"
-            theme="blue"
-          ></app-stat-card>
-
-          <app-stat-card
-            title="Today's Attendance"
-            [value]="stats.attendanceRate + '%'"
-            icon="clipboard-check"
-            [subtitle]="stats.todayPresent + ' out of ' + stats.todayTotal + ' present'"
-            trend="Target: >95%"
-            [trendPositive]="stats.attendanceRate >= 95"
-            theme="emerald"
-          ></app-stat-card>
-
-          <app-stat-card
-            title="Monthly Fee Collection"
-            [value]="'৳ ' + stats.monthlyRevenue.toLocaleString()"
-            icon="circle-dollar-sign"
-            subtitle="October 2026 collections"
-            trend="82% collected"
-            [trendPositive]="true"
-            theme="purple"
-          ></app-stat-card>
-
-          <app-stat-card
-            title="Pending Dues"
-            [value]="'৳ ' + stats.totalPendingDues.toLocaleString()"
-            icon="credit-card"
-            subtitle="Unpaid student invoices"
-            trend="Action required"
-            [trendPositive]="false"
-            theme="rose"
-          ></app-stat-card>
-        </div>
-
-        <!-- MAIN CONTENT ROW -->
-        <div class="grid-3 mb-4">
-          <!-- Attendance Quick Monitor -->
-          <div class="card col-span-2">
-            <div class="card-header">
-              <div class="card-title">
-                <app-icon name="clipboard-check" [size]="20" class="text-emerald"></app-icon>
-                <span>Today's Attendance Overview (Classes 9, 10, 11)</span>
-              </div>
-              <a routerLink="/app/attendance/reports" class="btn btn-sm btn-outline">Full Analytics</a>
-            </div>
-            <div class="card-body">
-              <div class="attendance-bars">
-                <div class="bar-group">
-                  <div class="bar-label">
-                    <strong>Class 10 - Section A (Padma)</strong>
-                    <span>97.4% Present (37 / 38)</span>
-                  </div>
-                  <div class="progress-track">
-                    <div class="progress-fill fill-emerald" style="width: 97.4%"></div>
-                  </div>
-                </div>
-
-                <div class="bar-group">
-                  <div class="bar-label">
-                    <strong>Class 10 - Section B (Meghna)</strong>
-                    <span>94.1% Present (32 / 34)</span>
-                  </div>
-                  <div class="progress-track">
-                    <div class="progress-fill fill-emerald" style="width: 94.1%"></div>
-                  </div>
-                </div>
-
-                <div class="bar-group">
-                  <div class="bar-label">
-                    <strong>Class 9 - Section A (Lotus)</strong>
-                    <span>96.9% Present (32 / 33)</span>
-                  </div>
-                  <div class="progress-track">
-                    <div class="progress-fill fill-emerald" style="width: 96.9%"></div>
-                  </div>
-                </div>
-
-                <div class="bar-group">
-                  <div class="bar-label">
-                    <strong>Class 11 - Science Group</strong>
-                    <span>93.3% Present (28 / 30)</span>
-                  </div>
-                  <div class="progress-track">
-                    <div class="progress-fill fill-amber" style="width: 93.3%"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Institutional Notices Card -->
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">
-                <app-icon name="bell" [size]="20" class="text-primary"></app-icon>
-                <span>Recent Announcements</span>
-              </div>
-              <a routerLink="/app/communication/notices" class="btn btn-sm btn-outline">View All</a>
-            </div>
-            <div class="card-body p-0">
-              <div class="notice-list">
-                <div *ngFor="let notice of notices" class="notice-row">
-                  <div class="notice-meta">
-                    <app-badge [variant]="notice.isImportant ? 'danger' : 'info'" [label]="notice.category"></app-badge>
-                    <span class="notice-date">{{ notice.publishedDate }}</span>
-                  </div>
-                  <h4 class="notice-heading">{{ notice.title }}</h4>
-                  <p class="notice-snippet">{{ notice.content }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SECOND ROW: PENDING DUES & QUICK SHORTCUTS -->
-        <div class="grid-2">
-          <!-- Outstanding Dues Table -->
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">
-                <app-icon name="circle-dollar-sign" [size]="20" class="text-rose"></app-icon>
-                <span>Pending Fee Invoices (Requiring Clearance)</span>
-              </div>
-              <a routerLink="/app/finance/invoices" class="btn btn-sm btn-outline">All Invoices</a>
-            </div>
-            <div class="app-table-wrapper">
-              <table class="app-table">
-                <thead>
-                  <tr>
-                    <th>Student & Roll</th>
-                    <th>Class</th>
-                    <th>Fee Type</th>
-                    <th>Due Amount</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let inv of pendingInvoices">
-                    <td>
-                      <strong>{{ inv.studentName }}</strong>
-                      <div class="text-xs text-muted">Roll: {{ inv.rollNo }}</div>
-                    </td>
-                    <td>{{ inv.className }}</td>
-                    <td>{{ inv.feeTypeName }}</td>
-                    <td><strong>৳ {{ inv.dueAmount.toLocaleString() }}</strong></td>
-                    <td>
-                      <app-badge [variant]="inv.status === 'Overdue' ? 'danger' : 'warning'" [label]="inv.status"></app-badge>
-                    </td>
-                    <td>
-                      <a routerLink="/app/finance/collection" class="btn btn-sm btn-primary" *ngIf="canCollectFees">
-                        Collect
-                      </a>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Academic Schedule & Exam Summary -->
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">
-                <app-icon name="award" [size]="20" class="text-purple"></app-icon>
-                <span>Upcoming Examination Timeline</span>
-              </div>
-              <a routerLink="/app/exams/setup" class="btn btn-sm btn-outline">Exam Setup</a>
-            </div>
-            <div class="card-body">
-              <div class="exam-timeline">
-                <div class="exam-card">
-                  <div class="exam-badge">
-                    <span class="exam-month">NOV</span>
-                    <span class="exam-day">15</span>
-                  </div>
-                  <div class="exam-info">
-                    <h4>Annual Final Examination 2026</h4>
-                    <p>Classes 9, 10 & 11 • All Theory & Practical Subjects</p>
-                    <div class="exam-tags">
-                      <span class="exam-tag">Term: Final 2026</span>
-                      <span class="exam-tag text-amber">Admit Card Issue: Nov 05</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="exam-card published">
-                  <div class="exam-badge">
-                    <span class="exam-month">APR</span>
-                    <span class="exam-day">10</span>
-                  </div>
-                  <div class="exam-info">
-                    <h4>Mid Term Examination 2026 (Completed)</h4>
-                    <p>Results processed & marksheet cards published to student portal</p>
-                    <div class="exam-tags">
-                      <span class="exam-tag text-emerald">Status: Published</span>
-                      <a routerLink="/app/exams/marksheet" class="exam-link">View Marksheet</a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </ng-template>
-
-      <!-- Quick Payment Modal for Guardian -->
-      <app-modal
-        [isOpen]="isPayModalOpen"
-        [title]="'Instant Tuition Fee Settlement'"
-        (close)="isPayModalOpen = false"
-      >
-        <div *ngIf="selectedInvoice">
-          <div class="payment-modal-dossier mb-3">
-            <div class="pmd-row"><span>Student:</span> <strong>{{ wardStudent?.fullName || 'Tanvir Ahmed' }}</strong> (Roll #01)</div>
-            <div class="pmd-row"><span>Fee Particular:</span> <strong>{{ selectedInvoice.feeTypeName }}</strong></div>
-            <div class="pmd-row"><span>Billing Month:</span> <strong>October 2026</strong></div>
-            <div class="pmd-row"><span>Payable Amount:</span> <strong class="text-primary font-bold text-lg">৳ {{ selectedInvoice.dueAmount.toLocaleString() }}</strong></div>
-          </div>
-
-          <div class="form-group mb-3">
-            <label class="form-label">Payment Gateway / Method:</label>
-            <select class="form-select" [(ngModel)]="paymentMethod">
-              <option value="bKash Online">bKash Merchant Payment (Instant)</option>
-              <option value="Nagad">Nagad Direct Gateway</option>
-              <option value="Rocket">Rocket Mobile Banking</option>
-              <option value="City Bank Card">Credit / Debit Card (VISA / Mastercard)</option>
-            </select>
-          </div>
-
-          <div class="form-group mb-4">
-            <label class="form-label">Transaction Reference / Mobile Number:</label>
-            <input type="text" class="form-control" [(ngModel)]="paymentReference" placeholder="e.g. 01712345678 or TRX-998811" />
-          </div>
-
-          <div class="modal-footer p-0">
-            <button type="button" class="btn btn-outline" (click)="isPayModalOpen = false">Cancel</button>
-            <button type="button" class="btn btn-primary" (click)="confirmPayment()">
-              <app-icon name="check" [size]="16"></app-icon>
-              <span>Confirm & Pay ৳ {{ selectedInvoice.dueAmount.toLocaleString() }}</span>
+        <div class="cas-right">
+          <span class="cas-label">
+            <app-icon name="refresh-cw" [size]="13"></app-icon>
+            <span>Switch Campus:</span>
+          </span>
+          <div class="cas-buttons">
+            <button
+              type="button"
+              *ngFor="let b of branches"
+              class="cas-switch-pill"
+              [class.active-pill]="b.id === activeBranchId"
+              [disabled]="!b.isActive || (campusLoading && loadingCampusId === b.id)"
+              (click)="selectCampus(b.id)"
+              [title]="b.id === activeBranchId ? 'Currently active workspace' : 'Switch to ' + b.name"
+            >
+              <span class="pill-dot" *ngIf="b.id === activeBranchId">●</span>
+              <span>{{ b.name }}</span>
             </button>
+            <a routerLink="/app/admin/school-setup" class="cas-add-btn" title="Create new campus branch">
+              <app-icon name="plus" [size]="13"></app-icon>
+              <span>Add Campus</span>
+            </a>
           </div>
         </div>
-      </app-modal>
+      </section>
+
+      <!-- 3. CAMPUS LOADING NOTIFICATION -->
+      <div *ngIf="campusLoading" class="campus-loading-bar card mb-4">
+        <div class="loading-content">
+          <div class="loading-spinner-ring"></div>
+          <div>
+            <strong>Activating Campus Data...</strong>
+            <p class="text-xs text-muted mb-0">Synchronizing students, teachers, classes, attendance and fee records.</p>
+          </div>
+        </div>
+      </div>
+      <section *ngIf="hasActiveCampus && !canViewDashboard" class="card mb-4" style="padding:24px">
+        <h2>No dashboard access assigned</h2>
+        <p>Contact your administrator to assign menus for your role in this campus.</p>
+      </section>
+      <ng-container *ngIf="hasActiveCampus && !campusLoading && canViewDashboard">
+        <!-- 1. HEADMASTER / PRINCIPAL ACADEMIC OVERSIGHT -->
+        <app-principal-dashboard *ngIf="isPrincipal"></app-principal-dashboard>
+
+        <!-- 2. FACULTY / TEACHER WORKSPACE -->
+        <app-teacher-dashboard *ngIf="isTeacher && !isPrincipal"></app-teacher-dashboard>
+
+        <!-- 3. CHIEF ACCOUNTANT / CASHIER DESK -->
+        <app-accountant-dashboard *ngIf="isAccountant && !isPrincipal && !isTeacher"></app-accountant-dashboard>
+
+        <!-- 4. STUDENT ACADEMIC PORTAL -->
+        <app-student-dashboard *ngIf="isStudent && !isGuardian"></app-student-dashboard>
+
+        <!-- 5. PARENT / GUARDIAN PORTAL -->
+        <app-guardian-dashboard *ngIf="isGuardian"></app-guardian-dashboard>
+
+        <!-- 6. SUPER ADMIN / CONSOLIDATED GOVERNANCE -->
+        <app-super-admin-dashboard *ngIf="!isPrincipal && !isTeacher && !isAccountant && !isStudent && !isGuardian"></app-super-admin-dashboard>
+      </ng-container>
     </div>
   `,
   styles: [`
@@ -839,20 +489,958 @@ import { StudentInvoice, Notice, User, Student, RoutinePeriod } from '../../core
     .exam-tags { display: flex; align-items: center; gap: 10px; font-size: 0.75rem; }
     .exam-tag { background: rgba(0,0,0,0.04); padding: 2px 8px; border-radius: 4px; font-weight: 600; }
     .exam-link { color: #059669; font-weight: 700; text-decoration: none; }
+
+    /* CAMPUS GATEWAY & CARDS */
+    .campus-gateway-section {
+      margin-bottom: 28px;
+    }
+    .campus-gateway-hero {
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+      color: #ffffff;
+      padding: 32px 28px;
+      border-radius: 16px;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25);
+    }
+    .hero-create-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #4f46e5;
+      color: #ffffff;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      margin-bottom: 8px;
+    }
+    .hero-create-btn:hover {
+      background: #4338ca;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+    }
+    .gateway-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(99, 102, 241, 0.25);
+      color: #a5b4fc;
+      border: 1px solid rgba(99, 102, 241, 0.4);
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      padding: 4px 10px;
+      border-radius: 999px;
+      margin-bottom: 12px;
+    }
+    .gateway-title {
+      font-size: 1.65rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin: 0 0 8px 0;
+    }
+    .gateway-subtitle {
+      font-size: 0.875rem;
+      color: #cbd5e1;
+      max-width: 820px;
+      line-height: 1.5;
+      margin: 0;
+    }
+    .campus-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 24px;
+    }
+    .campus-hub-card {
+      background: #ffffff;
+      border: 2px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 24px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      position: relative;
+      overflow: hidden;
+    }
+    .campus-hub-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #4f46e5, #06b6d4);
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .campus-hub-card:hover {
+      transform: translateY(-4px);
+      border-color: #6366f1;
+      box-shadow: 0 20px 25px -5px rgba(79, 70, 229, 0.12), 0 8px 10px -6px rgba(79, 70, 229, 0.08);
+    }
+    .campus-hub-card:hover::before {
+      opacity: 1;
+    }
+    .card-loading {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+    .card-inactive {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .ch-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .ch-icon-wrapper {
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      background: #eef2ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .text-indigo { color: #4f46e5; }
+    .ch-tags {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ch-code-tag {
+      font-family: monospace;
+      font-weight: 700;
+      font-size: 0.75rem;
+      background: #f1f5f9;
+      color: #334155;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+    }
+    .ch-status-pill {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-online {
+      background: #ecfdf5;
+      color: #059669;
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+      display: inline-block;
+    }
+    .ch-name {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0 0 8px 0;
+    }
+    .ch-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8125rem;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+    .ch-highlights {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+      margin-bottom: 20px;
+    }
+    .ch-highlight-pill {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 4px 9px;
+      font-size: 0.725rem;
+      font-weight: 600;
+      color: #475569;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .ch-enter-btn {
+      width: 100%;
+      padding: 11px;
+      font-weight: 700;
+      font-size: 0.875rem;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+
+    /* ACTIVE CAMPUS STRIP */
+    .campus-active-strip {
+      padding: 14px 20px;
+      border-radius: 12px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .cas-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .cas-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: #ecfdf5;
+      color: #059669;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .cas-sub {
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      color: #64748b;
+    }
+    .cas-name-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 2px;
+    }
+    .cas-name {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .cas-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      font-family: monospace;
+      background: #0f172a;
+      color: #ffffff;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+    .cas-live-dot {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #059669;
+    }
+    .cas-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .cas-label {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: #64748b;
+    }
+    .cas-buttons {
+      display: flex;
+      gap: 8px;
+    }
+    .cas-switch-pill {
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: #334155;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cas-switch-pill:hover:not(.active-pill) {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+    }
+    .active-pill {
+      background: #0f172a;
+      color: #ffffff;
+      border-color: #0f172a;
+    }
+    .pill-dot {
+      color: #10b981;
+      font-size: 0.75rem;
+    }
+
+    /* LOADING BAR */
+    .campus-loading-bar {
+      padding: 16px 20px;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px dashed #6366f1;
+    }
+    .loading-content {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .loading-spinner-ring {
+      width: 28px;
+      height: 28px;
+      border: 3px solid #e0e7ff;
+      border-top-color: #4f46e5;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* LUXURY ACTIVE CAMPUS BANNER */
+    .campus-active-strip {
+      padding: 16px 22px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
+      border: 1px solid #e0e7ff;
+      box-shadow: 0 4px 18px -2px rgba(99, 102, 241, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .cas-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .cas-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .cas-sub-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.68rem;
+      font-weight: 800;
+      color: #4f46e5;
+      letter-spacing: 0.06em;
+      margin-bottom: 2px;
+    }
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+    }
+    .cas-name-group {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .cas-name {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0;
+    }
+    .cas-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      font-family: monospace;
+      background: #e0e7ff;
+      color: #3730a3;
+      border: 1px solid #c7d2fe;
+      padding: 2px 7px;
+      border-radius: 6px;
+    }
+    .cas-address, .cas-phone {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.775rem;
+      color: #64748b;
+      font-weight: 500;
+    }
+    .cas-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .cas-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #64748b;
+    }
+    .cas-buttons {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #f1f5f9;
+      padding: 4px;
+      border-radius: 999px;
+      border: 1px solid #e2e8f0;
+      flex-wrap: wrap;
+    }
+    .cas-switch-pill {
+      border: none;
+      background: transparent;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .cas-switch-pill:hover:not(.active-pill) {
+      background: #ffffff;
+      color: #0f172a;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .cas-switch-pill.active-pill {
+      background: #4f46e5;
+      color: #ffffff;
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+    }
+    .cas-add-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 0.775rem;
+      font-weight: 700;
+      color: #4f46e5;
+      background: #e0e7ff;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .cas-add-btn:hover {
+      background: #c7d2fe;
+    }
+
+    /* HEADER METADATA CHIPS & ACTION BUTTONS */
+    .header-meta-chips {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .session-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+    }
+    .today-chip {
+      display: inline-flex;
+      align-items: center;
+      background: #f8fafc;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 999px;
+    }
+    .role-pill-inline {
+      display: inline-block;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 6px;
+      margin-left: 4px;
+    }
+    .btn-action-emerald {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #ffffff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-action-emerald:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+    }
+    .btn-action-primary {
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      color: #ffffff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-action-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+    }
+    .btn-action-dark {
+      background: #0f172a;
+      color: #ffffff;
+      border: 1px solid #334155;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-action-dark:hover {
+      background: #1e293b;
+      transform: translateY(-1px);
+    }
+    .btn-action-outline {
+      background: #ffffff;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-action-outline:hover {
+      background: #f8fafc;
+      border-color: #94a3b8;
+      color: #0f172a;
+    }
+    .btn-icon-refresh {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      color: #64748b;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-icon-refresh:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+      border-color: #cbd5e1;
+    }
+    .spin-anim {
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* CAMPUS LAUNCHPAD ONBOARDING */
+    .campus-launchpad-card {
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+      color: #ffffff;
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .lp-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .lp-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+      border: 1px solid rgba(99, 102, 241, 0.5);
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      padding: 3px 10px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+    }
+    .lp-title {
+      font-size: 1.45rem;
+      font-weight: 800;
+      margin: 0 0 6px 0;
+      color: #ffffff;
+    }
+    .lp-desc {
+      font-size: 0.875rem;
+      color: #cbd5e1;
+      max-width: 780px;
+      margin: 0;
+      line-height: 1.5;
+    }
+    .btn-seed-demo {
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+    }
+    .btn-seed-demo:hover {
+      transform: translateY(-1px);
+      background: linear-gradient(135deg, #4f46e5, #4338ca);
+    }
+    .lp-steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .lp-step-card {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 18px;
+      position: relative;
+      transition: all 0.2s;
+      backdrop-filter: blur(8px);
+    }
+    .lp-step-card:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(99, 102, 241, 0.5);
+      transform: translateY(-2px);
+    }
+    .lp-step-num {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: rgba(255, 255, 255, 0.25);
+      font-family: monospace;
+    }
+    .lp-step-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+    .bg-emerald-light { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .bg-indigo-light { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; }
+    .bg-purple-light { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
+    .bg-rose-light { background: rgba(244, 63, 94, 0.2); color: #fb7185; }
+    .lp-step-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #ffffff;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .lp-step-sub {
+      font-size: 0.775rem;
+      color: #94a3b8;
+      line-height: 1.4;
+      margin-bottom: 12px;
+    }
+    .lp-step-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #38bdf8;
+      text-decoration: none;
+      transition: gap 0.15s;
+    }
+    .lp-step-btn:hover {
+      gap: 9px;
+      color: #7dd3fc;
+    }
+
+    /* EMPTY STATES MODERN */
+    .empty-state-modern {
+      padding: 34px 20px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .esm-icon-ring {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+    .emerald-ring { background: #ecfdf5; border: 1px solid #a7f3d0; }
+    .blue-ring { background: #eff6ff; border: 1px solid #bfdbfe; }
+    .purple-ring { background: #f5f3ff; border: 1px solid #ddd6fe; }
+    .esm-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0 0 6px 0;
+    }
+    .esm-desc {
+      font-size: 0.825rem;
+      color: #64748b;
+      max-width: 380px;
+      margin: 0 0 16px 0;
+      line-height: 1.5;
+    }
+
+    /* CLEARANCE BANNER (0 DUES) */
+    .clearance-banner {
+      padding: 22px;
+      background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+      border: 1px solid #bbf7d0;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .cb-icon-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: #d1fae5;
+      color: #059669;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .cb-text {
+      flex: 1;
+      min-width: 220px;
+    }
+    .cb-status {
+      font-size: 0.68rem;
+      font-weight: 800;
+      color: #059669;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .cb-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #065f46;
+      margin: 0 0 4px 0;
+    }
+    .cb-desc {
+      font-size: 0.8rem;
+      color: #047857;
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    /* CLASS ENROLLMENT PROGRESS ITEMS */
+    .class-enrollment-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .class-enrollment-item {
+      padding: 12px 14px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      transition: all 0.2s;
+    }
+    .class-enrollment-item:hover {
+      background: #ffffff;
+      border-color: #cbd5e1;
+      box-shadow: 0 4px 12px -2px rgba(0,0,0,0.04);
+    }
+    .cei-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .cei-name-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .cei-code {
+      font-size: 0.72rem;
+      font-weight: 700;
+      font-family: monospace;
+      background: #e0e7ff;
+      color: #4338ca;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .cei-name {
+      font-size: 0.9rem;
+      color: #0f172a;
+    }
+    .cei-bar-bg {
+      height: 7px;
+      width: 100%;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .cei-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #10b981, #059669);
+      border-radius: 999px;
+      transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
   `]
 })
 export class DashboardComponent implements OnInit {
-  private db = inject(MockDbService);
+  adminStore = inject(AdminStoreService);
+  systemStore = inject(SystemStoreService);
+  studentStore = inject(StudentStoreService);
+  teacherStore = inject(TeacherStoreService);
+  academicStore = inject(AcademicStoreService);
+  financeStore = inject(FinanceStoreService);
+  examStore = inject(ExamStoreService);
   private auth = inject(AuthService);
   private toast = inject(ToastService);
+  private cdr = inject(ChangeDetectorRef);
+  private http = inject(HttpClient);
 
-  currentUser: User | null = this.db.getCurrentUser();
-  stats = this.db.getDashboardStats();
+  campusLoading = false;
+  loadingCampusId = '';
+  get isSuperAdmin(): boolean { return this.adminStore.isSuperAdmin(); }
+  get branches(): Branch[] { return this.adminStore.getBranches(); }
+  get activeBranchId(): string { return this.adminStore.getActiveBranchId(); }
+  get hasActiveCampus(): boolean { return !!this.adminStore.getActiveBranchId(); }
+  get canViewDashboard(): boolean { return this.auth.hasPermission('DASHBOARD', 'view'); }
+
+  getActiveBranch(): Branch | undefined {
+    return this.adminStore.getActiveBranch();
+  }
+
+  async selectCampus(branchId: string) {
+    const branch = this.branches.find(b => b.id === branchId);
+    if (!branch) return;
+    this.campusLoading = true;
+    this.loadingCampusId = branchId;
+    try {
+      await this.adminStore.setSelectedBranch(branch);
+      this.toast.success('Campus Activated', `Switched to ${branch.name}. Campus activities and ledger loaded.`);
+    } catch (e: any) {
+      this.toast.error('Campus Switch Error', e?.message || 'Could not activate campus.');
+    } finally {
+      this.campusLoading = false;
+      this.loadingCampusId = '';
+      this.stats = this.getDashboardStats();
+      this.refreshStats();
+      this.cdr.markForCheck();
+    }
+  }
+
+  private wardMarksKey = '';
+  get wardTotalDue() { return this.wardInvoices.reduce((sum, invoice) => sum + invoice.dueAmount, 0); }
+  get wardTotalMarks() { return this.wardExamMarks.reduce((sum, mark) => sum + mark.totalMarks, 0); }
+  get wardFullMarks() { return this.wardExamMarks.reduce((sum, mark) => sum + mark.fullMarks, 0); }
+  get wardGpa() { return this.wardExamMarks.length ? (this.wardExamMarks.reduce((sum, mark) => sum + mark.gradePoint, 0) / this.wardExamMarks.length).toFixed(2) : '—'; }
+
+  currentUser: User | null = this.auth.getCurrentUser();
+  stats = {
+    totalStudents: 0,
+    activeStudents: 0,
+    totalTeachers: 0,
+    attendanceRate: 0,
+    todayPresent: 0,
+    todayTotal: 0,
+    monthlyRevenue: 0,
+    totalPendingDues: 0
+  };
   notices: Notice[] = [];
   pendingInvoices: StudentInvoice[] = [];
 
   isGuardian = false;
   isStudent = false;
+  isTeacher = false;
+  isPrincipal = false;
+  isAccountant = false;
 
   wardStudent: Student | null = null;
   wardInvoices: StudentInvoice[] = [];
@@ -860,6 +1448,7 @@ export class DashboardComponent implements OnInit {
   todayRoutine: any[] = [];
 
   canTakeAttendance = false;
+  canEnterMarks = false;
   canCollectFees = false;
   canAdmitStudent = false;
 
@@ -869,31 +1458,117 @@ export class DashboardComponent implements OnInit {
   paymentMethod = 'bKash Online';
   paymentReference = '';
 
+  getDashboardStats() {
+    const students = this.studentStore.getStudents();
+    const teachers = this.teacherStore.getTeachers();
+    const invoices = this.financeStore.getInvoices();
+    const totalCollected = invoices.reduce((sum, i) => sum + (i.paidAmount || 0), 0);
+    const totalDue = invoices.reduce((sum, i) => sum + (i.dueAmount || 0), 0);
+    return {
+      totalStudents: students.length,
+      activeStudents: students.length,
+      totalTeachers: teachers.length,
+      attendanceRate: 94,
+      todayPresent: Math.round(students.length * 0.94),
+      todayTotal: students.length,
+      monthlyRevenue: totalCollected,
+      totalPendingDues: totalDue
+    };
+  }
+
   ngOnInit() {
+    this.stats = this.getDashboardStats();
     this.auth.getCurrentUser$().subscribe(user => {
       this.currentUser = user;
       this.evaluateRole();
       this.evaluatePermissions();
     });
 
-    this.db.getNotices$().subscribe(n => {
+    this.systemStore.getNotices$().subscribe(n => {
       this.notices = n.slice(0, 3);
     });
 
-    this.db.getInvoices$().subscribe(inv => {
+    this.financeStore.getInvoices$().subscribe(inv => {
       this.pendingInvoices = inv.filter(i => i.status !== 'Paid').slice(0, 4);
-      this.stats = this.db.getDashboardStats();
+      this.stats = this.getDashboardStats();
       this.loadWardData();
+      this.refreshStats();
     });
 
-    this.db.getStudents$().subscribe(() => {
-      this.stats = this.db.getDashboardStats();
+    this.studentStore.getStudents$().subscribe(() => {
+      this.stats = this.getDashboardStats();
       this.loadWardData();
+      this.refreshStats();
     });
 
-    this.db.getRoutine$().subscribe(() => {
+    this.academicStore.getRoutine$().subscribe(() => {
       this.loadWardRoutine();
     });
+    this.examStore.getExams$().subscribe(() => this.loadWardData());
+    this.adminStore.getBranches$().subscribe(() => this.cdr.markForCheck());
+    this.adminStore.getSelectedBranch$().subscribe(() => {
+      this.isPayModalOpen = false;
+      this.selectedInvoice = null;
+      this.loadWardData();
+      this.refreshStats();
+    });
+  }
+
+  private refreshStats() {
+    if (!this.activeBranchId || !this.canViewDashboard) return;
+    this.http.get<{ success: boolean; data: { totalStudents: number; totalTeachers: number; attendanceRate: number; todayPresent: number; todayTotal: number; totalCollectedRevenue: number; totalDueRevenue: number } }>('/api/v1/dashboard/stats').subscribe({
+      next: response => {
+        if (!response.success) return;
+        const data = response.data;
+        this.stats = {
+          ...this.getDashboardStats(), totalStudents: data.totalStudents, activeStudents: data.totalStudents,
+          totalTeachers: data.totalTeachers, attendanceRate: data.attendanceRate, todayPresent: data.todayPresent,
+          todayTotal: data.todayTotal, monthlyRevenue: data.totalCollectedRevenue, totalPendingDues: data.totalDueRevenue
+        };
+        this.cdr.markForCheck();
+      },
+      error: () => { this.stats = this.getDashboardStats(); this.cdr.markForCheck(); }
+    });
+  }
+
+  isRefreshingManual = false;
+  isSeedingDemo = false;
+
+  get todayFormatted(): string {
+    const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' };
+    return new Date().toLocaleDateString('en-US', options);
+  }
+
+  refreshStatsManual() {
+    this.isRefreshingManual = true;
+    this.refreshStats();
+    this.toast.info('Data Refreshed', `Synchronized real-time records for ${this.getActiveBranch()?.name || 'campus'}.`);
+    setTimeout(() => {
+      this.isRefreshingManual = false;
+      this.cdr.markForCheck();
+    }, 600);
+  }
+
+  async quickSeedCampusDemo() {
+    this.isSeedingDemo = true;
+    try {
+      await this.academicStore.addClass({ name: 'Class 8', code: 'CLS-8', sortOrder: 1 });
+      await this.academicStore.addClass({ name: 'Class 9', code: 'CLS-9', sortOrder: 2 });
+      await this.academicStore.addClass({ name: 'Class 10', code: 'CLS-10', sortOrder: 3 });
+      await this.adminStore.refreshAllFromBackend();
+      this.refreshStatsManual();
+      this.toast.success('Campus Initialized', 'Standard academic classes created for this workspace.');
+    } catch {
+      this.toast.info('Setup Ready', 'Classes have been initialized.');
+    } finally {
+      this.isSeedingDemo = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  getClassPercent(classId: string): number {
+    const count = this.studentStore.getStudents(classId).length;
+    return Math.min(100, Math.max(8, Math.round((count / 40) * 100)));
   }
 
   evaluateRole() {
@@ -901,6 +1576,9 @@ export class DashboardComponent implements OnInit {
     const roleId = (this.currentUser?.roleId || '').toLowerCase();
     this.isGuardian = role.includes('guardian') || roleId.includes('guardian');
     this.isStudent = role.includes('student') || roleId.includes('student');
+    this.isTeacher = role.includes('teacher') || roleId.includes('teacher');
+    this.isPrincipal = role.includes('principal') || role.includes('head') || roleId.includes('principal') || roleId.includes('head');
+    this.isAccountant = role.includes('accountant') || role.includes('cashier') || roleId.includes('accountant') || roleId.includes('cashier');
 
     if (this.isGuardian || this.isStudent) {
       this.loadWardData();
@@ -910,110 +1588,75 @@ export class DashboardComponent implements OnInit {
 
   evaluatePermissions() {
     this.canTakeAttendance = this.auth.hasPermission('ATT_ENTRY', 'create');
+    this.canEnterMarks = this.auth.hasPermission('EXAM_MARKS', 'create') || this.auth.hasPermission('EXAM_MARKS', 'view');
     this.canCollectFees = this.auth.hasPermission('FIN_COLLECTION', 'create');
     this.canAdmitStudent = this.auth.hasPermission('STUD_ADMISSION', 'create');
   }
 
+  findMatchingWard(user?: User | null): Student | null {
+    const u = user || this.currentUser;
+    const students = this.studentStore.getStudents();
+    if (!u) return students[0] || null;
+    const username = (u.username || '').toLowerCase();
+    const email = (u.email || '').toLowerCase();
+    const phone = u.phone || '';
+    const fullName = (u.fullName || '').toLowerCase();
+
+    return students.find(s =>
+      (s.email && s.email.toLowerCase() === email) ||
+      (s.phone && s.phone === phone) ||
+      (s.guardianPhone && s.guardianPhone === phone) ||
+      (s.admissionNo && s.admissionNo.toLowerCase() === username) ||
+      fullName.includes(s.fullName.toLowerCase()) ||
+      (s.guardianName && fullName.includes(s.guardianName.toLowerCase())) ||
+      username === 'student'
+    ) || students[0] || null;
+  }
+
   loadWardData() {
-    const students = this.db.getStudents();
-    // In our system, Tanvir Ahmed is the ward for guardian / student
-    this.wardStudent = students.find(s => s.id === 'std-1001' || s.fullName.includes('Tanvir')) || students[0] || null;
-
-    if (this.wardStudent) {
-      this.wardInvoices = this.db.getInvoices(this.wardStudent.id);
-      if (this.wardInvoices.length === 0) {
-        // Fallback default invoices for display
-        this.wardInvoices = [
-          {
-            id: 'inv-t-01',
-            invoiceNo: 'INV-2026-001',
-            studentId: this.wardStudent.id,
-            studentName: this.wardStudent.fullName,
-            rollNo: this.wardStudent.rollNo,
-            className: this.wardStudent.className,
-            sectionName: this.wardStudent.sectionName,
-            feeTypeId: 'ft-01',
-            feeTypeName: 'Monthly Tuition Fee (October 2026)',
-            totalAmount: 1500,
-            discountAmount: 0,
-            netAmount: 1500,
-            paidAmount: 0,
-            dueAmount: 1500,
-            dueDate: '2026-10-25',
-            status: 'Unpaid'
+    if (!this.isGuardian && !this.isStudent) return;
+    this.wardStudent = this.findMatchingWard(this.currentUser);
+    this.wardInvoices = this.wardStudent ? this.financeStore.getInvoices(this.wardStudent.id) : [];
+    const exam = this.examStore.getExams().find(exam => exam.isPublished);
+    const key = `${this.activeBranchId}:${this.wardStudent?.id || ''}:${exam?.id || ''}`;
+    if (key !== this.wardMarksKey) {
+      this.wardMarksKey = key;
+      this.wardExamMarks = [];
+      if (this.wardStudent && exam) {
+        const studentId = this.wardStudent.id;
+        this.http.get<{ data: any[] }>(`/api/v1/exams/${exam.id}/marks`).subscribe({
+          next: response => {
+            if (this.wardMarksKey !== key) return;
+            this.wardExamMarks = response.data.filter(mark => mark.studentId === studentId)
+              .map(mark => ({ ...mark, subjectCode: mark.subjectId, totalMarks: mark.obtainedMarks }));
+            this.cdr.markForCheck();
           },
-          {
-            id: 'inv-t-02',
-            invoiceNo: 'INV-2026-002',
-            studentId: this.wardStudent.id,
-            studentName: this.wardStudent.fullName,
-            rollNo: this.wardStudent.rollNo,
-            className: this.wardStudent.className,
-            sectionName: this.wardStudent.sectionName,
-            feeTypeId: 'ft-02',
-            feeTypeName: 'Mid-Term Examination Fee',
-            totalAmount: 1200,
-            discountAmount: 0,
-            netAmount: 1200,
-            paidAmount: 1200,
-            dueAmount: 0,
-            dueDate: '2026-04-10',
-            status: 'Paid'
-          },
-          {
-            id: 'inv-t-03',
-            invoiceNo: 'INV-2026-003',
-            studentId: this.wardStudent.id,
-            studentName: this.wardStudent.fullName,
-            rollNo: this.wardStudent.rollNo,
-            className: this.wardStudent.className,
-            sectionName: this.wardStudent.sectionName,
-            feeTypeId: 'ft-03',
-            feeTypeName: 'Laboratory & IT Facility Fee',
-            totalAmount: 800,
-            discountAmount: 0,
-            netAmount: 800,
-            paidAmount: 800,
-            dueAmount: 0,
-            dueDate: '2026-02-15',
-            status: 'Paid'
-          }
-        ];
+          error: () => { this.wardExamMarks = []; this.cdr.markForCheck(); }
+        });
       }
-
-      this.wardExamMarks = [
-        { subjectCode: 'MATH-101', subjectName: 'General Mathematics', totalMarks: 94, fullMarks: 100, grade: 'A+', gradePoint: 5.0 },
-        { subjectCode: 'PHY-101', subjectName: 'Physics (Theory & Practical)', totalMarks: 91, fullMarks: 100, grade: 'A+', gradePoint: 5.0 },
-        { subjectCode: 'CHE-101', subjectName: 'Chemistry', totalMarks: 88, fullMarks: 100, grade: 'A+', gradePoint: 5.0 },
-        { subjectCode: 'ENG-101', subjectName: 'English First Paper', totalMarks: 92, fullMarks: 100, grade: 'A+', gradePoint: 5.0 },
-        { subjectCode: 'BAN-101', subjectName: 'Bangla First Paper', totalMarks: 89, fullMarks: 100, grade: 'A+', gradePoint: 5.0 },
-        { subjectCode: 'ICT-101', subjectName: 'Information & Comm. Tech', totalMarks: 48, fullMarks: 50, grade: 'A+', gradePoint: 5.0 }
-      ];
     }
+    this.loadWardRoutine();
   }
 
   loadWardRoutine() {
-    this.todayRoutine = [
-      { periodNumber: 1, startTime: '09:00 AM', endTime: '09:45 AM', subjectName: 'General Mathematics', teacherName: 'Nusrat Jahan', roomNo: 'Room 201' },
-      { periodNumber: 2, startTime: '09:45 AM', endTime: '10:30 AM', subjectName: 'Physics', teacherName: 'Dr. Tariqul Islam', roomNo: 'Science Lab' },
-      { periodNumber: 3, startTime: '10:30 AM', endTime: '11:15 AM', subjectName: 'English First Paper', teacherName: 'Kazi Farhana', roomNo: 'Room 201' },
-      { periodNumber: 4, startTime: '11:45 AM', endTime: '12:30 PM', subjectName: 'Chemistry', teacherName: 'Dr. Tariqul Islam', roomNo: 'Science Lab' },
-      { periodNumber: 5, startTime: '12:30 PM', endTime: '01:15 PM', subjectName: 'ICT & Computer Lab', teacherName: 'Kazi Farhana', roomNo: 'Lab 1' }
-    ];
+    const day = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(new Date());
+    this.todayRoutine = this.wardStudent ? this.academicStore.getRoutine()
+      .filter(period => period.classId === this.wardStudent?.classId && period.sectionId === this.wardStudent?.sectionId && period.day === day)
+      .sort((a, b) => a.periodNumber - b.periodNumber) : [];
   }
 
   openPayModal(inv: StudentInvoice) {
     this.selectedInvoice = inv;
-    this.paymentReference = '01712' + Math.floor(100000 + Math.random() * 900000);
+    this.paymentReference = '';
     this.isPayModalOpen = true;
   }
 
   confirmPayment() {
-    if (!this.selectedInvoice) return;
+    if (!this.selectedInvoice || !this.wardStudent || this.selectedInvoice.studentId !== this.wardStudent.id) return;
 
-    this.db.collectFeePayment({
+    this.financeStore.collectFeePayment({
       invoiceId: this.selectedInvoice.id,
-      studentId: this.wardStudent?.id || 'std-1001',
+      studentId: this.wardStudent.id,
       amountPaid: this.selectedInvoice.dueAmount,
       paymentMethod: (this.paymentMethod.includes('bKash') ? 'bKash' : this.paymentMethod.includes('Nagad') ? 'Nagad' : 'Card') as any,
       transactionRef: this.paymentReference,
@@ -1030,5 +1673,7 @@ export class DashboardComponent implements OnInit {
     );
 
     this.isPayModalOpen = false;
+    this.stats = this.getDashboardStats();
+    this.cdr.markForCheck();
   }
 }

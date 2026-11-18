@@ -1,0 +1,28 @@
+[
+  {
+    "id": "209338c3",
+    "version": "auto_build_20261021_151705",
+    "archiveName": "Local Angular Pipeline",
+    "deployedAt": "2026-10-21T09:17:08.2817057Z",
+    "deployedBy": "System Administrator",
+    "fileSizeBytes": 1158090,
+    "fileSizeFormatted": "1.10 MB",
+    "fileCount": 33,
+    "status": "Active",
+    "hasIndexHtml": true,
+    "notes": "Compiled from local repository via automated pipeline"
+  },
+  {
+    "id": "4a286c9c",
+    "version": "auto_build_20261021_151011",
+    "archiveName": "Local Angular Pipeline",
+    "deployedAt": "2026-10-21T09:10:11.6416374Z",
+    "deployedBy": "System Administrator",
+    "fileSizeBytes": 1126445,
+    "fileSizeFormatted": "1.07 MB",
+    "fileCount": 32,
+    "status": "Archived",
+    "hasIndexHtml": true,
+    "notes": "Compiled from local repository via automated pipeline"
+  }
+]

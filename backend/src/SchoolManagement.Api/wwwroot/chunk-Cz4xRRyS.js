@@ -1,0 +1,1 @@
+import"./chunk-C4Cc5n8A.js";import"./main-HPOMM3OQ.js";import{t as me}from"./chunk-BC_f0w3Y.js";export{me as AcademicPerformanceReportComponent};

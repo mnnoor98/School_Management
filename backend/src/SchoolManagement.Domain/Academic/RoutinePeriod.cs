@@ -2,8 +2,9 @@ using SchoolManagement.Domain.Common;
 
 namespace SchoolManagement.Domain.Academic;
 
-public class RoutinePeriod : BaseEntity, ISchoolScopedEntity
+public class RoutinePeriod : BaseEntity, ICampusScopedEntity
 {
+    public string BranchId { get; set; } = "br-01";
     public string SchoolId { get; set; } = "sch-01";
     public string Day { get; set; } = string.Empty;
     public int PeriodNumber { get; set; } = 1;

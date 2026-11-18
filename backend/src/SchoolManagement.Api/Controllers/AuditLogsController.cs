@@ -1,9 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SchoolManagement.Application.Common.Interfaces;
 using SchoolManagement.Application.Common.Models;
 using SchoolManagement.Application.System.DTOs;
+using SchoolManagement.Application.System.Services;
 
 namespace SchoolManagement.Api.Controllers;
 
@@ -12,34 +11,17 @@ namespace SchoolManagement.Api.Controllers;
 [Authorize]
 public class AuditLogsController : ControllerBase
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IAuditLogService _auditLogService;
 
-    public AuditLogsController(IApplicationDbContext context)
+    public AuditLogsController(IAuditLogService auditLogService)
     {
-        _context = context;
+        _auditLogService = auditLogService;
     }
 
     [HttpGet]
     public async Task<ActionResult<ApiResponse<List<AuditLogDto>>>> GetAuditLogs()
     {
-        var logs = await _context.AuditLogs
-            .AsNoTracking()
-            .OrderByDescending(a => a.Timestamp)
-            .Take(100)
-            .Select(a => new AuditLogDto
-            {
-                Id = a.Id,
-                Timestamp = a.Timestamp,
-                UserName = a.UserName,
-                UserRole = a.UserRole,
-                Action = a.Action,
-                Module = a.Module,
-                TargetRecord = a.TargetRecord,
-                Details = a.Details,
-                SchoolScope = a.SchoolScope
-            })
-            .ToListAsync();
-
+        var logs = await _auditLogService.GetAuditLogsAsync(100);
         return Ok(ApiResponse<List<AuditLogDto>>.Ok(logs));
     }
 }

@@ -1,10 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using SchoolManagement.Application.Common.Interfaces;
 using SchoolManagement.Application.Common.Models;
 using SchoolManagement.Application.Students.DTOs;
-using SchoolManagement.Domain.Student;
+using SchoolManagement.Application.Students.Services;
 
 namespace SchoolManagement.Api.Controllers;
 
@@ -13,160 +12,178 @@ namespace SchoolManagement.Api.Controllers;
 [Authorize]
 public class StudentsController : ControllerBase
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IStudentService _studentService;
+    private readonly IStudentAccessService _studentAccess;
 
-    public StudentsController(IApplicationDbContext context)
+    public StudentsController(
+        IStudentService studentService,
+        IStudentAccessService studentAccess)
     {
-        _context = context;
+        _studentService = studentService;
+        _studentAccess = studentAccess;
     }
 
     [HttpGet]
-    public async Task<ActionResult<ApiResponse<List<StudentDto>>>> GetStudents([FromQuery] string? classId, [FromQuery] string? sectionId, [FromQuery] string? search)
+    public async Task<ActionResult<ApiResponse<List<StudentDto>>>> GetStudents(
+        [FromQuery] string? classId, 
+        [FromQuery] string? sectionId, 
+        [FromQuery] string? search)
     {
-        var query = _context.Students.AsNoTracking().AsQueryable();
-
-        if (!string.IsNullOrEmpty(classId)) query = query.Where(s => s.ClassId == classId);
-        if (!string.IsNullOrEmpty(sectionId)) query = query.Where(s => s.SectionId == sectionId);
-        if (!string.IsNullOrEmpty(search))
-        {
-            search = search.Trim().ToLower();
-            query = query.Where(s => s.FullName.ToLower().Contains(search) || s.AdmissionNo.ToLower().Contains(search) || s.RollNo.Contains(search));
-        }
-
-        var list = await query
-            .OrderBy(s => s.RollNo)
-            .Select(s => MapToDto(s))
-            .ToListAsync();
-
+        var allowedIds = await _studentAccess.GetAllowedStudentIdsAsync();
+        var list = await _studentService.GetStudentsAsync(classId, sectionId, search, allowedIds);
         return Ok(ApiResponse<List<StudentDto>>.Ok(list));
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<ApiResponse<StudentDto>>> GetStudentById(string id)
     {
-        var student = await _context.Students.FindAsync(id);
+        if (!await _studentAccess.CanAccessStudentAsync(id))
+        {
+            return Forbid();
+        }
+
+        var student = await _studentService.GetStudentByIdAsync(id);
         if (student == null) return NotFound(ApiResponse<StudentDto>.Fail("Student not found"));
 
-        return Ok(ApiResponse<StudentDto>.Ok(MapToDto(student)));
+        return Ok(ApiResponse<StudentDto>.Ok(student));
     }
 
     [HttpPost("admissions")]
     public async Task<ActionResult<ApiResponse<StudentDto>>> AdmitStudent([FromBody] AdmissionRequest request)
     {
-        var academicYear = await _context.AcademicYears.FirstOrDefaultAsync(y => y.IsCurrent);
-        var schoolClass = await _context.Classes.FindAsync(request.ClassId);
-        var section = await _context.Sections.FindAsync(request.SectionId);
-
-        int count = await _context.Students.CountAsync(s => s.ClassId == request.ClassId && s.SectionId == request.SectionId);
-        string newRoll = (count + 1).ToString("D2");
-        string admNo = $"ADM-{DateTime.UtcNow.Year}-" + (new Random().Next(1000, 9999));
-
-        var student = new Student
+        if (await _studentAccess.IsRestrictedUserAsync())
         {
-            AdmissionNo = admNo,
-            FullName = request.FullName,
-            BanglaName = request.BanglaName,
-            DateOfBirth = request.DateOfBirth,
-            Gender = request.Gender,
-            BloodGroup = request.BloodGroup,
-            Religion = request.Religion,
-            Email = request.Email,
-            Phone = request.Phone,
-            PresentAddress = request.PresentAddress,
-            PermanentAddress = request.PermanentAddress,
-            PhotoUrl = string.IsNullOrEmpty(request.PhotoUrl) ? "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80" : request.PhotoUrl,
-            GuardianName = request.GuardianName,
-            GuardianRelation = request.GuardianRelation,
-            GuardianPhone = request.GuardianPhone,
-            GuardianOccupation = request.GuardianOccupation,
-            GuardianIncome = request.GuardianIncome,
-            AcademicYearId = academicYear?.Id ?? "ay-2026",
-            ClassId = request.ClassId,
-            ClassName = schoolClass?.Name ?? "General Class",
-            SectionId = request.SectionId,
-            SectionName = section?.Name ?? "Section A",
-            RollNo = newRoll,
-            AdmissionDate = DateTime.UtcNow,
-            Status = "Active"
-        };
+            return Forbid();
+        }
 
-        _context.Students.Add(student);
+        var student = await _studentService.AdmitStudentAsync(request);
+        return Ok(ApiResponse<StudentDto>.Ok(student, "Student admitted successfully"));
+    }
 
-        _context.Enrollments.Add(new Enrollment
+    [HttpGet("admission-lookups")]
+    public async Task<ActionResult<ApiResponse<AdmissionLookupsDto>>> GetAdmissionLookups()
+    {
+        var lookups = await _studentService.GetAdmissionLookupsAsync();
+        return Ok(ApiResponse<AdmissionLookupsDto>.Ok(lookups));
+    }
+
+    [HttpGet("import-template")]
+    public IActionResult DownloadImportTemplate()
+    {
+        var fileBytes = _studentService.DownloadImportTemplate();
+        return File(
+            fileBytes,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "Student_Admission_Template.xlsx");
+    }
+
+    [HttpPost("bulk-import")]
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult<ApiResponse<BulkImportResultDto>>> BulkImportStudents(
+        IFormFile? file,
+        [FromForm] string classId,
+        [FromForm] string sectionId,
+        [FromForm] string? academicYearId)
+    {
+        if (await _studentAccess.IsRestrictedUserAsync())
         {
-            StudentId = student.Id,
-            AcademicYearId = student.AcademicYearId,
-            ClassId = student.ClassId,
-            SectionId = student.SectionId,
-            RollNo = student.RollNo,
-            EnrollmentDate = DateTime.UtcNow,
-            Status = "Active"
-        });
+            return Forbid();
+        }
 
-        await _context.SaveChangesAsync();
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(ApiResponse<BulkImportResultDto>.Fail("Please upload a valid Excel file (.xlsx)."));
+        }
 
-        return Ok(ApiResponse<StudentDto>.Ok(MapToDto(student), "Student admitted successfully"));
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (ext != ".xlsx" && ext != ".xls")
+        {
+            return BadRequest(ApiResponse<BulkImportResultDto>.Fail("Only Excel spreadsheets (.xlsx, .xls) are supported."));
+        }
+
+        using var stream = file.OpenReadStream();
+        var (result, error) = await _studentService.BulkImportStudentsAsync(stream, file.FileName, classId, sectionId, academicYearId);
+
+        if (!string.IsNullOrEmpty(error) && (result == null || result.ImportedCount == 0))
+        {
+            return BadRequest(ApiResponse<BulkImportResultDto>.Fail(error));
+        }
+
+        return Ok(ApiResponse<BulkImportResultDto>.Ok(
+            result!,
+            $"Successfully imported {result!.ImportedCount} student(s)."));
     }
 
     [HttpPost("{id}/promote")]
     public async Task<ActionResult<ApiResponse<bool>>> PromoteStudent(string id, [FromBody] StudentPromotionRequest request)
     {
-        var student = await _context.Students.FindAsync(id);
-        if (student == null) return NotFound(ApiResponse<bool>.Fail("Student not found"));
-
-        var targetClass = await _context.Classes.FindAsync(request.TargetClassId);
-        var targetSection = await _context.Sections.FindAsync(request.TargetSectionId);
-
-        student.AcademicYearId = request.TargetAcademicYearId;
-        student.ClassId = request.TargetClassId;
-        student.ClassName = targetClass?.Name ?? student.ClassName;
-        student.SectionId = request.TargetSectionId;
-        student.SectionName = targetSection?.Name ?? student.SectionName;
-        student.RollNo = request.NewRollNo;
-        student.UpdatedAt = DateTime.UtcNow;
-
-        _context.Enrollments.Add(new Enrollment
+        if (await _studentAccess.IsRestrictedUserAsync())
         {
-            StudentId = student.Id,
-            AcademicYearId = request.TargetAcademicYearId,
-            ClassId = request.TargetClassId,
-            SectionId = request.TargetSectionId,
-            RollNo = request.NewRollNo,
-            EnrollmentDate = DateTime.UtcNow,
-            Status = "Active"
-        });
+            return Forbid();
+        }
 
-        await _context.SaveChangesAsync();
+        var success = await _studentService.PromoteStudentAsync(id, request);
+        if (!success) return NotFound(ApiResponse<bool>.Fail("Student not found"));
+
         return Ok(ApiResponse<bool>.Ok(true, "Student promoted successfully"));
     }
 
-    private static StudentDto MapToDto(Student s) => new()
+    [HttpPut("{id}")]
+    public async Task<ActionResult<ApiResponse<StudentDto>>> UpdateStudent(string id, [FromBody] UpdateStudentRequest request)
     {
-        Id = s.Id,
-        AdmissionNo = s.AdmissionNo,
-        FullName = s.FullName,
-        BanglaName = s.BanglaName,
-        DateOfBirth = s.DateOfBirth,
-        Gender = s.Gender,
-        BloodGroup = s.BloodGroup,
-        Religion = s.Religion,
-        Email = s.Email,
-        Phone = s.Phone,
-        PresentAddress = s.PresentAddress,
-        PermanentAddress = s.PermanentAddress,
-        PhotoUrl = s.PhotoUrl,
-        GuardianName = s.GuardianName,
-        GuardianRelation = s.GuardianRelation,
-        GuardianPhone = s.GuardianPhone,
-        GuardianOccupation = s.GuardianOccupation,
-        GuardianIncome = s.GuardianIncome,
-        AcademicYearId = s.AcademicYearId,
-        ClassId = s.ClassId,
-        ClassName = s.ClassName,
-        SectionId = s.SectionId,
-        SectionName = s.SectionName,
-        RollNo = s.RollNo,
-        AdmissionDate = s.AdmissionDate,
-        Status = s.Status
-    };
+        if (await _studentAccess.IsRestrictedUserAsync())
+        {
+            return Forbid();
+        }
+
+        var student = await _studentService.UpdateStudentAsync(id, request);
+        if (student == null) return NotFound(ApiResponse<StudentDto>.Fail("Student not found"));
+
+        return Ok(ApiResponse<StudentDto>.Ok(student, "Student updated successfully"));
+    }
+
+    [HttpPut("{id}/status")]
+    public async Task<ActionResult<ApiResponse<StudentDto>>> UpdateStudentStatus(string id, [FromBody] UpdateStudentStatusRequest request)
+    {
+        if (await _studentAccess.IsRestrictedUserAsync())
+        {
+            return Forbid();
+        }
+
+        var student = await _studentService.UpdateStudentStatusAsync(id, request.Status, request.Reason);
+        if (student == null) return NotFound(ApiResponse<StudentDto>.Fail("Student not found"));
+
+        return Ok(ApiResponse<StudentDto>.Ok(student, $"Student status updated to {request.Status} successfully"));
+    }
+
+    [HttpPost("batch-promote")]
+    public async Task<ActionResult<ApiResponse<int>>> BatchPromote([FromBody] BatchStudentPromotionRequest request)
+    {
+        if (await _studentAccess.IsRestrictedUserAsync())
+        {
+            return Forbid();
+        }
+
+        if (request.Students == null || !request.Students.Any())
+        {
+            return BadRequest(ApiResponse<int>.Fail("No students selected for promotion"));
+        }
+
+        int count = await _studentService.BatchPromoteAsync(request);
+        return Ok(ApiResponse<int>.Ok(count, $"Successfully promoted {count} students"));
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<ActionResult<ApiResponse<bool>>> DeleteStudent(string id)
+    {
+        if (await _studentAccess.IsRestrictedUserAsync())
+        {
+            return Forbid();
+        }
+
+        var success = await _studentService.DeleteStudentAsync(id);
+        if (!success) return NotFound(ApiResponse<bool>.Fail("Student not found"));
+
+        return Ok(ApiResponse<bool>.Ok(true, "Student deleted successfully"));
+    }
 }

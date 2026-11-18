@@ -26,13 +26,14 @@ public class ExceptionHandlingMiddleware
             _logger.LogError(ex, "An unhandled exception occurred during request execution: {Message}", ex.Message);
 
             context.Response.ContentType = "application/problem+json";
-            context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+            var status = ex is UnauthorizedAccessException ? 403 : ex is ArgumentException ? 400 : 500;
+            context.Response.StatusCode = status;
 
             var problem = new ProblemDetails
             {
-                Status = (int)HttpStatusCode.InternalServerError,
-                Title = "Internal Server Error",
-                Detail = ex.Message,
+                Status = status,
+                Title = status == 403 ? "Access denied" : status == 400 ? "Invalid request" : "Internal Server Error",
+                Detail = status == 500 ? "The request could not be completed." : ex.Message,
                 Instance = context.Request.Path,
                 Extensions = { ["traceId"] = context.TraceIdentifier, ["timestamp"] = DateTime.UtcNow }
             };

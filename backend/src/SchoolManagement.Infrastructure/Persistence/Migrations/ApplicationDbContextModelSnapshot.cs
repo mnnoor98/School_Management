@@ -27,6 +27,10 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("text");
 
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("ClassId")
                         .IsRequired()
                         .HasColumnType("text");
@@ -36,7 +40,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("SchoolId")
                         .IsRequired()
@@ -59,9 +63,11 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SchoolId", "BranchId");
 
                     b.ToTable("class_subjects", "academic");
                 });
@@ -69,6 +75,10 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("SchoolManagement.Domain.Academic.RoutinePeriod", b =>
                 {
                     b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("BranchId")
+                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("ClassId")
@@ -80,7 +90,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Day")
                         .IsRequired()
@@ -130,9 +140,11 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SchoolId", "BranchId");
 
                     b.ToTable("class_routines", "academic");
                 });
@@ -142,12 +154,19 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("text");
 
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -161,11 +180,15 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SchoolId", "Code")
+                    b.HasIndex("SchoolId", "BranchId");
+
+                    b.HasIndex("SchoolId", "Code");
+
+                    b.HasIndex("SchoolId", "BranchId", "Code")
                         .IsUnique();
 
                     b.ToTable("classes", "academic");
@@ -174,6 +197,10 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("SchoolManagement.Domain.Academic.Section", b =>
                 {
                     b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("BranchId")
+                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<int>("Capacity")
@@ -194,7 +221,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -205,11 +232,13 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ClassId");
+
+                    b.HasIndex("SchoolId", "BranchId");
 
                     b.ToTable("sections", "academic");
                 });
@@ -219,12 +248,16 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("text");
 
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<decimal>("FullMarks")
                         .HasPrecision(14, 2)
@@ -247,9 +280,11 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SchoolId", "BranchId");
 
                     b.ToTable("subjects", "academic");
                 });
@@ -263,11 +298,15 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("Date")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("NewStatus")
                         .IsRequired()
@@ -290,16 +329,18 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("Timestamp")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("UpdatedBy")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SchoolId", "BranchId");
 
                     b.ToTable("attendance_correction_logs", "attendance");
                 });
@@ -310,14 +351,18 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("AttendanceDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("ClassId")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("EnrollmentId")
                         .IsRequired()
@@ -355,9 +400,11 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SchoolId", "BranchId");
 
                     b.HasIndex("SchoolId", "StudentId", "AttendanceDate")
                         .IsUnique();
@@ -378,7 +425,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<int>("DisplayOrder")
                         .HasColumnType("integer");
@@ -410,7 +457,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 
@@ -432,14 +479,14 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 
@@ -455,10 +502,10 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<bool>("IsRevoked")
                         .HasColumnType("boolean");
@@ -471,7 +518,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("UserId")
                         .IsRequired()
@@ -497,7 +544,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -518,7 +565,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 
@@ -536,11 +583,15 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                     b.Property<bool>("Approve")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<bool>("Create")
                         .HasColumnType("boolean");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<bool>("Delete")
                         .HasColumnType("boolean");
@@ -559,15 +610,23 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("SchoolId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<bool>("View")
                         .HasColumnType("boolean");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("RoleId", "MenuCode")
+                    b.HasIndex("RoleId", "MenuCode");
+
+                    b.HasIndex("SchoolId", "BranchId");
+
+                    b.HasIndex("SchoolId", "BranchId", "RoleId", "MenuCode")
                         .IsUnique();
 
                     b.ToTable("role_menu_permissions", "auth");
@@ -587,7 +646,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -623,7 +682,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Username")
                         .IsRequired()
@@ -649,8 +708,12 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("GrantedBy")
                         .HasColumnType("text");
@@ -662,14 +725,20 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                     b.Property<int>("Override")
                         .HasColumnType("integer");
 
+                    b.Property<string>("SchoolId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SchoolId", "BranchId");
 
                     b.HasIndex("UserId", "MenuCode", "Action")
                         .IsUnique();
@@ -683,7 +752,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("RoleId")
                         .IsRequired()
@@ -694,7 +763,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("UserId")
                         .IsRequired()
@@ -707,6 +776,270 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("user_roles", "auth");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Employee.EmployeePayroll", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("AdvanceSalaryDeduction")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<DateTime?>("ApprovalDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ApprovedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("BankAccountNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("BankName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("BasicPay")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<decimal>("BonusAmount")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<string>("BonusParticulars")
+                        .HasColumnType("text");
+
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("Conveyance")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("DaysPresent")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Department")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Designation")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("DisbursementDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("EmployeeCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("EmployeeName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("GrossSalary")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<decimal>("HouseRent")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<decimal>("LeaveDeduction")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<decimal>("MedicalAllowance")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<decimal>("NetPayable")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<decimal>("OtherDeductions")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<int>("PaidLeaveDays")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("PayPeriodEnd")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("PayPeriodStart")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PaymentStatus")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PreparedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("ProvidentFundDeduction")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SalaryMonthYear")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SchoolId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("SpecialAllowance")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<decimal>("TaxDeduction")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<string>("TeacherId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("TotalDeductions")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<int>("TotalWorkingDays")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TransactionRef")
+                        .HasColumnType("text");
+
+                    b.Property<int>("UnpaidLeaveDays")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TeacherId");
+
+                    b.HasIndex("SchoolId", "BranchId");
+
+                    b.HasIndex("SchoolId", "BranchId", "SalaryMonthYear", "TeacherId")
+                        .IsUnique();
+
+                    b.ToTable("employee_payrolls", "finance");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Employee.SalaryStructure", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("BankAccountNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("BankName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("BasicPay")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("BranchName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("Conveyance")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Department")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Designation")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("EmployeeCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("EmployeeName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("HouseRent")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("MedicalAllowance")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<string>("MobileWalletNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("ProvidentFundPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<string>("SchoolId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("SpecialAllowance")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<string>("TeacherId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TeacherId");
+
+                    b.HasIndex("SchoolId", "BranchId");
+
+                    b.HasIndex("SchoolId", "BranchId", "TeacherId")
+                        .IsUnique();
+
+                    b.ToTable("salary_structures", "finance");
                 });
 
             modelBuilder.Entity("SchoolManagement.Domain.Employee.Teacher", b =>
@@ -722,8 +1055,12 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Department")
                         .IsRequired()
@@ -746,7 +1083,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("JoiningDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Phone")
                         .IsRequired()
@@ -765,14 +1102,92 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SchoolId", "EmployeeCode")
+                    b.HasIndex("SchoolId", "BranchId");
+
+                    b.HasIndex("SchoolId", "EmployeeCode");
+
+                    b.HasIndex("SchoolId", "BranchId", "EmployeeCode")
                         .IsUnique();
 
                     b.ToTable("teachers", "employee");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Employee.TeacherLeaveApplication", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("AppliedOn")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Department")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("EmployeeCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("LeaveType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReviewRemark")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReviewedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SchoolId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TeacherId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TeacherName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("TotalDays")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SchoolId", "BranchId");
+
+                    b.HasIndex("SchoolId", "BranchId", "TeacherId");
+
+                    b.ToTable("teacher_leaves", "employee");
                 });
 
             modelBuilder.Entity("SchoolManagement.Domain.Exam.Exam", b =>
@@ -788,11 +1203,15 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("EndDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<bool>("IsPublished")
                         .HasColumnType("boolean");
@@ -806,16 +1225,18 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("StartDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Term")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SchoolId", "BranchId");
 
                     b.ToTable("exams", "exam");
                 });
@@ -825,12 +1246,16 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("text");
 
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("ClassId")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("ExamId")
                         .IsRequired()
@@ -884,13 +1309,404 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ExamId");
 
+                    b.HasIndex("SchoolId", "BranchId");
+
                     b.ToTable("marks", "exam");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Exam.ExamScheduleItem", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ClassId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ClassName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Day")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("EndTime")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("ExamDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ExamId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("FullMarks")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<decimal>("PassMarks")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<string>("RoomNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SchoolId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("StartTime")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SubjectId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SubjectName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SchoolId", "BranchId");
+
+                    b.HasIndex("SchoolId", "BranchId", "ExamId", "ClassId");
+
+                    b.ToTable("exam_schedules", "exam");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Finance.BankAccount", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AccountName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("AccountNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("AccountType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("BankName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("BranchName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("CurrentBalance")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDefaultForTuition")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("OpeningBalance")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<string>("RoutingNumber")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SchoolId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SwiftCode")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SchoolId", "BranchId", "AccountNumber")
+                        .IsUnique();
+
+                    b.ToTable("bank_accounts", "finance");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Finance.BankTransaction", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<decimal>("BalanceAfter")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<string>("BankAccountId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("CounterpartyOrAccount")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("DepositSlipAttachment")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReferenceNo")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SchoolId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TransactedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("TransactionDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("TransactionType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BankAccountId");
+
+                    b.HasIndex("SchoolId", "BranchId", "BankAccountId");
+
+                    b.ToTable("bank_transactions", "finance");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Finance.ExpenseCategory", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("MonthlyBudgetLimit")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SchoolId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SchoolId", "BranchId");
+
+                    b.ToTable("expense_categories", "finance");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Finance.ExpenseVoucher", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<DateTime?>("ApprovalDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ApprovedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AttachmentUrl")
+                        .HasColumnType("text");
+
+                    b.Property<string>("BankAccountOrChequeNo")
+                        .HasColumnType("text");
+
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("CategoryName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ContactPhone")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ExpenseCategoryId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("ExpenseDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PaidTo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SchoolId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("VoucherNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpenseCategoryId");
+
+                    b.HasIndex("SchoolId", "BranchId");
+
+                    b.HasIndex("SchoolId", "BranchId", "VoucherNo")
+                        .IsUnique();
+
+                    b.ToTable("expense_vouchers", "finance");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Finance.ExpenseVoucherItem", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ExpenseVoucherId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Particulars")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<string>("SchoolId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpenseVoucherId");
+
+                    b.HasIndex("SchoolId", "BranchId");
+
+                    b.ToTable("expense_voucher_items", "finance");
                 });
 
             modelBuilder.Entity("SchoolManagement.Domain.Finance.FeePayment", b =>
@@ -902,6 +1718,10 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasPrecision(14, 2)
                         .HasColumnType("numeric(14,2)");
 
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("ClassName")
                         .IsRequired()
                         .HasColumnType("text");
@@ -911,7 +1731,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("InvoiceId")
                         .IsRequired()
@@ -921,7 +1741,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("PaymentDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("PaymentMethod")
                         .IsRequired()
@@ -951,7 +1771,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 
@@ -959,6 +1779,8 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ReceiptNo")
                         .IsUnique();
+
+                    b.HasIndex("SchoolId", "BranchId");
 
                     b.ToTable("payments", "finance");
                 });
@@ -976,6 +1798,10 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasPrecision(14, 2)
                         .HasColumnType("numeric(14,2)");
 
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("ClassId")
                         .IsRequired()
                         .HasColumnType("text");
@@ -985,10 +1811,10 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("DueDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("FeeTypeId")
                         .IsRequired()
@@ -1003,9 +1829,11 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SchoolId", "BranchId");
 
                     b.ToTable("fee_structures", "finance");
                 });
@@ -1015,12 +1843,16 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("text");
 
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -1039,11 +1871,80 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("SchoolId", "BranchId");
+
                     b.ToTable("fee_types", "finance");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Finance.PettyCashVoucher", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<string>("ApprovedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("PayeeName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReceiptAttachment")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ReimbursedDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ReimbursedFromBankAccountId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SchoolId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("VoucherDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("VoucherNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SchoolId", "BranchId", "VoucherNo")
+                        .IsUnique();
+
+                    b.ToTable("petty_cash_vouchers", "finance");
                 });
 
             modelBuilder.Entity("SchoolManagement.Domain.Finance.StudentInvoice", b =>
@@ -1051,12 +1952,16 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("text");
 
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("ClassName")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<decimal>("DiscountAmount")
                         .HasPrecision(14, 2)
@@ -1067,7 +1972,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric(14,2)");
 
                     b.Property<DateTime>("DueDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("FeeTypeId")
                         .IsRequired()
@@ -1118,12 +2023,14 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric(14,2)");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 
                     b.HasIndex("InvoiceNo")
                         .IsUnique();
+
+                    b.HasIndex("SchoolId", "BranchId");
 
                     b.ToTable("invoices", "finance");
                 });
@@ -1133,11 +2040,15 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("text");
 
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("EndDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<bool>("IsCurrent")
                         .HasColumnType("boolean");
@@ -1154,14 +2065,18 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("StartDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SchoolId", "Name")
+                    b.HasIndex("SchoolId", "BranchId");
+
+                    b.HasIndex("SchoolId", "Name");
+
+                    b.HasIndex("SchoolId", "BranchId", "Name")
                         .IsUnique();
 
                     b.ToTable("academic_years", "school");
@@ -1181,7 +2096,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -1199,7 +2114,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 
@@ -1227,7 +2142,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -1250,7 +2165,7 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Website")
                         .IsRequired()
@@ -1273,15 +2188,19 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("ClassId")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("EnrollmentDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("RollNo")
                         .IsRequired()
@@ -1304,11 +2223,13 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 
                     b.HasIndex("StudentId");
+
+                    b.HasIndex("SchoolId", "BranchId");
 
                     b.HasIndex("SchoolId", "AcademicYearId", "SectionId", "RollNo");
 
@@ -1324,8 +2245,12 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("AdmissionCategory")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("AdmissionDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("AdmissionNo")
                         .IsRequired()
@@ -1338,6 +2263,10 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("ClassId")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1346,14 +2275,44 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("CoCurricular")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("DateOfBirth")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("District")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Division")
+                        .HasColumnType("text");
 
                     b.Property<string>("Email")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("EmergencyContactName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EmergencyContactPhone")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EmergencyContactRelation")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FatherName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FatherNid")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FatherOccupation")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FatherPhone")
                         .HasColumnType("text");
 
                     b.Property<string>("FullName")
@@ -1384,6 +2343,40 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<bool>("IsHostel")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsTransport")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LastClassPassed")
+                        .HasColumnType("text");
+
+                    b.Property<string>("LastGpaMarks")
+                        .HasColumnType("text");
+
+                    b.Property<string>("LastPassingYear")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MedicalNotes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MotherName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MotherNid")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MotherOccupation")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MotherPhone")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Nationality")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("PermanentAddress")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1398,6 +2391,9 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("PresentAddress")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PreviousSchool")
                         .HasColumnType("text");
 
                     b.Property<string>("Religion")
@@ -1420,16 +2416,30 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("Shift")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("TcNumber")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Upazila")
+                        .HasColumnType("text");
+
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SchoolId", "AdmissionNo")
+                    b.HasIndex("SchoolId", "AdmissionNo");
+
+                    b.HasIndex("SchoolId", "BranchId");
+
+                    b.HasIndex("SchoolId", "BranchId", "AdmissionNo")
                         .IsUnique();
 
                     b.ToTable("students", "student");
@@ -1444,8 +2454,12 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Details")
                         .IsRequired()
@@ -1468,10 +2482,10 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("Timestamp")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("UserName")
                         .IsRequired()
@@ -1482,6 +2496,8 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SchoolId", "BranchId");
 
                     b.ToTable("audit_logs", "system");
                 });
@@ -1495,6 +2511,10 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1504,13 +2524,13 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<bool>("IsImportant")
                         .HasColumnType("boolean");
 
                     b.Property<DateTime>("PublishedDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("SchoolId")
                         .IsRequired()
@@ -1525,11 +2545,132 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("SchoolId", "BranchId");
+
                     b.ToTable("notices", "system");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.System.SmsDispatchLog", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("CreditsUsed")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("RecipientCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RecipientGroup")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SchoolId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SenderName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SchoolId", "BranchId");
+
+                    b.ToTable("sms_logs", "system");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.System.SmsTemplate", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("SchoolId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SchoolId", "BranchId");
+
+                    b.ToTable("sms_templates", "system");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Academic.ClassSubjectMapping", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Academic.RoutinePeriod", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Academic.SchoolClass", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SchoolManagement.Domain.Academic.Section", b =>
@@ -1540,7 +2681,44 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("SchoolClass");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Academic.Subject", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Attendance.AttendanceCorrectionLog", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Attendance.AttendanceRecord", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SchoolManagement.Domain.Auth.Menu", b =>
@@ -1573,6 +2751,13 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Role");
                 });
 
@@ -1582,6 +2767,13 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .WithMany("UserOverrides")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("User");
@@ -1606,6 +2798,72 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("SchoolManagement.Domain.Employee.EmployeePayroll", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.Employee.Teacher", "Teacher")
+                        .WithMany()
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Teacher");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Employee.SalaryStructure", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.Employee.Teacher", "Teacher")
+                        .WithMany()
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Teacher");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Employee.Teacher", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Employee.TeacherLeaveApplication", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Exam.Exam", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SchoolManagement.Domain.Exam.ExamMark", b =>
                 {
                     b.HasOne("SchoolManagement.Domain.Exam.Exam", "Exam")
@@ -1614,7 +2872,81 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Exam");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Exam.ExamScheduleItem", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Finance.BankTransaction", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.Finance.BankAccount", "BankAccount")
+                        .WithMany("Transactions")
+                        .HasForeignKey("BankAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("BankAccount");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Finance.ExpenseCategory", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Finance.ExpenseVoucher", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.Finance.ExpenseCategory", "Category")
+                        .WithMany()
+                        .HasForeignKey("ExpenseCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Finance.ExpenseVoucherItem", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.Finance.ExpenseVoucher", "Voucher")
+                        .WithMany("Items")
+                        .HasForeignKey("ExpenseVoucherId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Voucher");
                 });
 
             modelBuilder.Entity("SchoolManagement.Domain.Finance.FeePayment", b =>
@@ -1625,7 +2957,54 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Invoice");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Finance.FeeStructure", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Finance.FeeType", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Finance.StudentInvoice", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.School.AcademicYear", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SchoolManagement.Domain.Student.Enrollment", b =>
@@ -1636,7 +3015,64 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Student.Student", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.System.AuditLog", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.System.Notice", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.System.SmsDispatchLog", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.System.SmsTemplate", b =>
+                {
+                    b.HasOne("SchoolManagement.Domain.School.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("SchoolId", "BranchId")
+                        .HasPrincipalKey("SchoolId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SchoolManagement.Domain.Academic.SchoolClass", b =>
@@ -1666,6 +3102,16 @@ namespace SchoolManagement.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("SchoolManagement.Domain.Exam.Exam", b =>
                 {
                     b.Navigation("Marks");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Finance.BankAccount", b =>
+                {
+                    b.Navigation("Transactions");
+                });
+
+            modelBuilder.Entity("SchoolManagement.Domain.Finance.ExpenseVoucher", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("SchoolManagement.Domain.Finance.StudentInvoice", b =>

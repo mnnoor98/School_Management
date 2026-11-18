@@ -2,8 +2,9 @@ using SchoolManagement.Domain.Common;
 
 namespace SchoolManagement.Domain.Attendance;
 
-public class AttendanceRecord : BaseEntity, ISchoolScopedEntity
+public class AttendanceRecord : BaseEntity, ICampusScopedEntity
 {
+    public string BranchId { get; set; } = "br-01";
     public string SchoolId { get; set; } = "sch-01";
     public string EnrollmentId { get; set; } = string.Empty;
     public string StudentId { get; set; } = string.Empty;

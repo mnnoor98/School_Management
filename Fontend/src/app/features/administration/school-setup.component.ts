@@ -1,7 +1,7 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MockDbService } from '../../core/services/mock-db.service';
+import { AdminStoreService } from '../../core/services/stores/admin-store.service';
 import { ToastService } from '../../core/services/toast.service';
 import { School, Branch, AcademicYear } from '../../core/models';
 import { BadgeComponent } from '../../shared/components/badge.component';
@@ -190,18 +190,20 @@ import { ModalComponent } from '../../shared/components/modal.component';
     <app-modal
       [isOpen]="isBranchModalOpen"
       [title]="isEditingBranch ? 'Edit Campus Branch' : 'Add New Campus Branch'"
-      subtitle="Configure branch identification, code, and address scope."
-      [maxWidth]="500"
+      subtitle="Configure branch identification, code, address, and assigned principal."
+      [maxWidth]="580"
       (closed)="closeBranchModal()"
     >
       <div body class="modal-form">
-        <div class="form-group">
-          <label class="form-label">Branch Code <span class="required">*</span></label>
-          <input type="text" class="form-control" [(ngModel)]="branchForm.code" placeholder="e.g. BR-03" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Branch Name <span class="required">*</span></label>
-          <input type="text" class="form-control" [(ngModel)]="branchForm.name" placeholder="e.g. Dhanmondi Campus" />
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Branch Code <span class="required">*</span></label>
+            <input type="text" class="form-control" [(ngModel)]="branchForm.code" placeholder="e.g. BR-03" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Branch Name <span class="required">*</span></label>
+            <input type="text" class="form-control" [(ngModel)]="branchForm.name" placeholder="e.g. Dhanmondi Campus" />
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Campus Address <span class="required">*</span></label>
@@ -210,6 +212,42 @@ import { ModalComponent } from '../../shared/components/modal.component';
         <div class="form-group">
           <label class="form-label">Contact Phone</label>
           <input type="text" class="form-control" [(ngModel)]="branchForm.phone" placeholder="+880 1700-000000" />
+        </div>
+
+        <!-- Campus Principal / Head Teacher creation -->
+        <div *ngIf="!isEditingBranch" class="principal-box">
+          <div class="principal-box-header">
+            <app-icon name="user-check" [size]="16" class="text-primary"></app-icon>
+            <span class="font-semibold text-sm">Campus Principal / Head Teacher (Optional)</span>
+          </div>
+          <p class="text-xs text-muted">Create the lead administrator account strictly locked to this new campus.</p>
+          
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Principal Full Name</label>
+              <input type="text" class="form-control" [(ngModel)]="branchForm.principalFullName" placeholder="e.g. Dr. Rafiqul Islam" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Username</label>
+              <input type="text" class="form-control" [(ngModel)]="branchForm.principalUsername" placeholder="e.g. principal_dhanmondi" />
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" class="form-control" [(ngModel)]="branchForm.principalEmail" placeholder="principal@campus.edu.bd" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Initial Password</label>
+              <input type="text" class="form-control" [(ngModel)]="branchForm.principalPassword" placeholder="Default: principal123" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Principal Phone</label>
+            <input type="text" class="form-control" [(ngModel)]="branchForm.principalPhone" placeholder="+880 1700-000000" />
+          </div>
         </div>
       </div>
 
@@ -347,11 +385,28 @@ import { ModalComponent } from '../../shared/components/modal.component';
       flex-direction: column;
       gap: 14px;
     }
+    .principal-box {
+      margin-top: 4px;
+      padding: 14px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .principal-box-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #1e293b;
+    }
   `]
 })
 export class SchoolSetupComponent implements OnInit {
-  private db = inject(MockDbService);
+  private db = inject(AdminStoreService);
   private toast = inject(ToastService);
+  private cdr = inject(ChangeDetectorRef);
 
   school: School = this.db.getSchool();
   branches: Branch[] = [];
@@ -369,7 +424,12 @@ export class SchoolSetupComponent implements OnInit {
     code: '',
     name: '',
     address: '',
-    phone: ''
+    phone: '',
+    principalUsername: '',
+    principalFullName: '',
+    principalEmail: '',
+    principalPassword: 'principal123',
+    principalPhone: ''
   };
 
   // Academic Year Modal
@@ -435,7 +495,12 @@ export class SchoolSetupComponent implements OnInit {
       code: `BR-0${nextNum}`,
       name: '',
       address: '',
-      phone: ''
+      phone: '',
+      principalUsername: '',
+      principalFullName: '',
+      principalEmail: '',
+      principalPassword: 'principal123',
+      principalPhone: ''
     };
     this.isBranchModalOpen = true;
   }
@@ -447,7 +512,12 @@ export class SchoolSetupComponent implements OnInit {
       code: b.code,
       name: b.name,
       address: b.address,
-      phone: b.phone
+      phone: b.phone,
+      principalUsername: '',
+      principalFullName: '',
+      principalEmail: '',
+      principalPassword: '',
+      principalPhone: ''
     };
     this.isBranchModalOpen = true;
   }
@@ -474,6 +544,7 @@ export class SchoolSetupComponent implements OnInit {
           this.toast.success('Success', res.message || 'Branch saved successfully.');
           this.closeBranchModal();
           this.db.refreshAllFromBackend();
+          this.cdr.markForCheck();
         } else {
           this.toast.error('Error', res?.message || 'Could not save branch.');
         }
@@ -481,6 +552,7 @@ export class SchoolSetupComponent implements OnInit {
       error: err => {
         this.isSubmittingBranch = false;
         this.toast.error('Error', err?.error?.message || 'Could not save branch.');
+        this.cdr.markForCheck();
       }
     });
   }
@@ -491,6 +563,7 @@ export class SchoolSetupComponent implements OnInit {
         if (res && res.success) {
           this.toast.info('Status Updated', res.message);
           this.db.refreshAllFromBackend();
+          this.cdr.markForCheck();
         }
       }
     });
@@ -525,6 +598,7 @@ export class SchoolSetupComponent implements OnInit {
           this.toast.success('Session Created', 'New academic session added to database.');
           this.closeYearModal();
           this.db.refreshAllFromBackend();
+          this.cdr.markForCheck();
         } else {
           this.toast.error('Error', res?.message || 'Could not create academic session.');
         }
@@ -532,6 +606,7 @@ export class SchoolSetupComponent implements OnInit {
       error: err => {
         this.isSubmittingYear = false;
         this.toast.error('Error', err?.error?.message || 'Could not create academic session.');
+        this.cdr.markForCheck();
       }
     });
   }
@@ -542,6 +617,7 @@ export class SchoolSetupComponent implements OnInit {
         if (res && res.success) {
           this.toast.info('Session Lock', res.message);
           this.db.refreshAllFromBackend();
+          this.cdr.markForCheck();
         }
       }
     });
@@ -553,6 +629,7 @@ export class SchoolSetupComponent implements OnInit {
         if (res && res.success) {
           this.toast.success('Current Session Set', res.message);
           this.db.refreshAllFromBackend();
+          this.cdr.markForCheck();
         }
       }
     });

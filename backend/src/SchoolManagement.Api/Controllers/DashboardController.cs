@@ -1,9 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SchoolManagement.Application.Common.Interfaces;
 using SchoolManagement.Application.Common.Models;
 using SchoolManagement.Application.System.DTOs;
+using SchoolManagement.Application.System.Services;
 
 namespace SchoolManagement.Api.Controllers;
 
@@ -12,44 +11,59 @@ namespace SchoolManagement.Api.Controllers;
 [Authorize]
 public class DashboardController : ControllerBase
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IDashboardService _dashboardService;
 
-    public DashboardController(IApplicationDbContext context)
+    public DashboardController(IDashboardService dashboardService)
     {
-        _context = context;
+        _dashboardService = dashboardService;
     }
 
     [HttpGet("stats")]
     public async Task<ActionResult<ApiResponse<DashboardStatsDto>>> GetStats()
     {
-        int studentCount = await _context.Students.CountAsync(s => s.Status == "Active");
-        int teacherCount = await _context.Teachers.CountAsync(t => t.Status == "Active");
-        int classCount = await _context.Classes.CountAsync();
-        int examCount = await _context.Exams.CountAsync();
-
-        var today = DateTime.UtcNow.Date;
-        var todayAttendance = await _context.AttendanceRecords.Where(a => a.AttendanceDate.Date == today).ToListAsync();
-        decimal attendanceRate = todayAttendance.Count > 0
-            ? Math.Round((decimal)todayAttendance.Count(a => a.Status == "Present") / todayAttendance.Count * 100, 1)
-            : 96.4m;
-
-        decimal totalRevenue = await _context.StudentInvoices.SumAsync(i => i.NetAmount);
-        decimal collectedRevenue = await _context.StudentInvoices.SumAsync(i => i.PaidAmount);
-        decimal dueRevenue = await _context.StudentInvoices.SumAsync(i => i.DueAmount);
-        decimal collectionRate = totalRevenue > 0 ? Math.Round((collectedRevenue / totalRevenue) * 100, 1) : 100m;
-
-        var stats = new DashboardStatsDto
-        {
-            TotalStudents = studentCount,
-            TotalTeachers = teacherCount,
-            ActiveClasses = classCount,
-            ActiveExams = examCount,
-            AttendanceRate = attendanceRate,
-            FeeCollectionRate = collectionRate,
-            TotalCollectedRevenue = collectedRevenue,
-            TotalDueRevenue = dueRevenue
-        };
-
+        var stats = await _dashboardService.GetDashboardStatsAsync();
         return Ok(ApiResponse<DashboardStatsDto>.Ok(stats));
+    }
+
+    [HttpGet("principal")]
+    public async Task<ActionResult<ApiResponse<PrincipalDashboardDto>>> GetPrincipalDashboard()
+    {
+        var stats = await _dashboardService.GetPrincipalDashboardAsync();
+        return Ok(ApiResponse<PrincipalDashboardDto>.Ok(stats));
+    }
+
+    [HttpGet("teacher")]
+    public async Task<ActionResult<ApiResponse<TeacherDashboardDto>>> GetTeacherDashboard([FromQuery] string? teacherId = null)
+    {
+        var stats = await _dashboardService.GetTeacherDashboardAsync(teacherId);
+        return Ok(ApiResponse<TeacherDashboardDto>.Ok(stats));
+    }
+
+    [HttpGet("accountant")]
+    public async Task<ActionResult<ApiResponse<AccountantDashboardDto>>> GetAccountantDashboard()
+    {
+        var stats = await _dashboardService.GetAccountantDashboardAsync();
+        return Ok(ApiResponse<AccountantDashboardDto>.Ok(stats));
+    }
+
+    [HttpGet("super-admin")]
+    public async Task<ActionResult<ApiResponse<SuperAdminDashboardDto>>> GetSuperAdminDashboard()
+    {
+        var stats = await _dashboardService.GetSuperAdminDashboardAsync();
+        return Ok(ApiResponse<SuperAdminDashboardDto>.Ok(stats));
+    }
+
+    [HttpGet("student")]
+    public async Task<ActionResult<ApiResponse<StudentDashboardDto>>> GetStudentDashboard([FromQuery] string? studentId = null)
+    {
+        var stats = await _dashboardService.GetStudentDashboardAsync(studentId);
+        return Ok(ApiResponse<StudentDashboardDto>.Ok(stats));
+    }
+
+    [HttpGet("guardian")]
+    public async Task<ActionResult<ApiResponse<GuardianDashboardDto>>> GetGuardianDashboard([FromQuery] string? guardianUserId = null)
+    {
+        var stats = await _dashboardService.GetGuardianDashboardAsync(guardianUserId);
+        return Ok(ApiResponse<GuardianDashboardDto>.Ok(stats));
     }
 }

@@ -4,6 +4,7 @@ namespace SchoolManagement.Application.Menus.DTOs;
 
 public class MenuItemDto
 {
+    public bool SuperAdminOnly { get; set; }
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Code { get; set; } = string.Empty;

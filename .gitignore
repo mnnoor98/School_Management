@@ -30,3 +30,9 @@ desktop.ini
 .idea/
 *.swp
 *~
+
+# Private campus uploads
+backend/src/SchoolManagement.Api/storage/
+
+# Temporary scratch directory
+scratch/

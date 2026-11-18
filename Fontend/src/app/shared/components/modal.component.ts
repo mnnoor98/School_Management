@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from './icon.component';
 
@@ -9,12 +9,12 @@ import { IconComponent } from './icon.component';
   template: `
     <div *ngIf="isOpen" class="modal-backdrop" (click)="onBackdropClick($event)">
       <div class="modal-container" [style.max-width.px]="maxWidth">
-        <div class="modal-header">
+        <div class="modal-header no-print">
           <div class="modal-title-wrap">
             <h3 class="modal-title">{{ title }}</h3>
             <p *ngIf="subtitle" class="modal-subtitle">{{ subtitle }}</p>
           </div>
-          <button type="button" class="btn-close" (click)="close()">
+          <button type="button" class="btn-close no-print" (click)="close()" aria-label="Close modal">
             <app-icon name="x" [size]="18"></app-icon>
           </button>
         </div>
@@ -24,7 +24,7 @@ import { IconComponent } from './icon.component';
           <ng-content></ng-content>
         </div>
 
-        <div class="modal-footer" *ngIf="showFooter">
+        <div class="modal-footer no-print" *ngIf="showFooter">
           <ng-content select="[footer]"></ng-content>
         </div>
       </div>
@@ -116,6 +116,53 @@ import { IconComponent } from './icon.component';
       from { opacity: 0; transform: scale(0.96) translateY(10px); }
       to { opacity: 1; transform: scale(1) translateY(0); }
     }
+    @media print {
+      :host {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+      }
+      .modal-backdrop {
+        position: static !important;
+        background: transparent !important;
+        backdrop-filter: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        display: block !important;
+        overflow: visible !important;
+        z-index: auto !important;
+      }
+      .modal-container {
+        position: static !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        animation: none !important;
+      }
+      .modal-header,
+      .modal-footer,
+      .btn-close,
+      .no-print {
+        display: none !important;
+      }
+      .modal-body {
+        padding: 0 !important;
+        margin: 0 !important;
+        overflow: visible !important;
+        max-height: none !important;
+        height: auto !important;
+      }
+    }
   `]
 })
 export class ModalComponent {
@@ -128,11 +175,20 @@ export class ModalComponent {
 
   @Output() isOpenChange = new EventEmitter<boolean>();
   @Output() closed = new EventEmitter<void>();
+  @Output('close') closeEvent = new EventEmitter<void>();
+
+  @HostListener('document:keydown.escape')
+  onEscapeKey() {
+    if (this.isOpen) {
+      this.close();
+    }
+  }
 
   close() {
     this.isOpen = false;
     this.isOpenChange.emit(false);
     this.closed.emit();
+    this.closeEvent.emit();
   }
 
   onBackdropClick(event: MouseEvent) {

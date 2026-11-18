@@ -11,3 +11,8 @@ public interface ISchoolScopedEntity
 {
     string SchoolId { get; set; }
 }
+
+public interface ICampusScopedEntity : ISchoolScopedEntity
+{
+    string BranchId { get; set; }
+}

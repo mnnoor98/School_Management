@@ -1,12 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using SchoolManagement.Application.Auth.DTOs;
+using SchoolManagement.Application.Auth.Services;
 using SchoolManagement.Application.Common.Interfaces;
 using SchoolManagement.Application.Common.Models;
 using SchoolManagement.Application.Menus.DTOs;
-using SchoolManagement.Domain.Auth;
-using SchoolManagement.Domain.Common;
 
 namespace SchoolManagement.Api.Controllers;
 
@@ -15,264 +13,129 @@ namespace SchoolManagement.Api.Controllers;
 [Authorize]
 public class UsersController : ControllerBase
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IUserService _userService;
+    private readonly ICurrentUserService _currentUser;
 
-    public UsersController(IApplicationDbContext context)
+    public UsersController(IUserService userService, ICurrentUserService currentUser)
     {
-        _context = context;
+        _userService = userService;
+        _currentUser = currentUser;
     }
 
     [HttpGet]
+    [Authorize(Policy = SchoolManagement.Api.Security.SecurityPolicies.CampusAdministrator)]
     public async Task<ActionResult<ApiResponse<List<UserProfileDto>>>> GetUsers()
     {
-        var users = await _context.Users
-            .AsNoTracking()
-            .OrderBy(u => u.RoleName)
-            .ThenBy(u => u.FullName)
-            .Select(u => new UserProfileDto
-            {
-                Id = u.Id,
-                Username = u.Username,
-                FullName = u.FullName,
-                Email = u.Email,
-                RoleId = u.RoleId,
-                RoleName = u.RoleName,
-                SchoolId = u.SchoolId,
-                BranchId = u.BranchId,
-                Avatar = u.Avatar,
-                Phone = u.Phone,
-                IsActive = u.IsActive
-            })
-            .ToListAsync();
-
+        var users = await _userService.GetUsersAsync(_currentUser.BranchId);
         return Ok(ApiResponse<List<UserProfileDto>>.Ok(users));
     }
 
     [HttpPost]
+    [Authorize(Policy = SchoolManagement.Api.Security.SecurityPolicies.CampusAdministrator)]
     public async Task<ActionResult<ApiResponse<UserProfileDto>>> CreateUser([FromBody] CreateUserRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.FullName))
+        var (user, error) = await _userService.CreateUserAsync(request, _currentUser.BranchId, _currentUser.SchoolId, _currentUser.IsSuperAdmin);
+        if (!string.IsNullOrEmpty(error))
         {
-            return BadRequest(ApiResponse<UserProfileDto>.Fail("Username and Full Name are required."));
+            return BadRequest(ApiResponse<UserProfileDto>.Fail(error));
         }
 
-        var normalizedUsername = request.Username.Trim().ToLower();
-        var exists = await _context.Users.AnyAsync(u => u.Username.ToLower() == normalizedUsername);
-        if (exists)
-        {
-            return BadRequest(ApiResponse<UserProfileDto>.Fail($"Username '{request.Username}' is already taken."));
-        }
-
-        var role = await _context.Roles.FindAsync(request.RoleId) 
-            ?? await _context.Roles.FirstOrDefaultAsync(r => r.Name.ToLower() == (request.RoleName ?? "").ToLower())
-            ?? await _context.Roles.FirstOrDefaultAsync(r => r.Code == "TEACHER");
-
-        var roleId = role?.Id ?? "role-teacher";
-        var roleName = role?.Name ?? "Teacher";
-
-        var password = string.IsNullOrWhiteSpace(request.Password) ? "password123" : request.Password;
-        var passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
-
-        var defaultAvatar = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80";
-        if (roleName.Contains("Teacher")) defaultAvatar = "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=120&auto=format&fit=crop&q=80";
-        else if (roleName.Contains("Student")) defaultAvatar = "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=120&auto=format&fit=crop&q=80";
-        else if (roleName.Contains("Accountant")) defaultAvatar = "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80";
-
-        var user = new User
-        {
-            Id = "usr-" + Guid.NewGuid().ToString("N").Substring(0, 8),
-            Username = request.Username.Trim(),
-            FullName = request.FullName.Trim(),
-            Email = request.Email?.Trim() ?? $"{request.Username.ToLower()}@scholarsacademy.edu.bd",
-            PasswordHash = passwordHash,
-            RoleId = roleId,
-            RoleName = roleName,
-            SchoolId = request.SchoolId ?? "sch-01",
-            BranchId = request.BranchId ?? "br-01",
-            Avatar = string.IsNullOrWhiteSpace(request.Avatar) ? defaultAvatar : request.Avatar,
-            Phone = request.Phone?.Trim() ?? "+880 1700-000000",
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        user.UserRoles.Add(new UserRole
-        {
-            UserId = user.Id,
-            RoleId = roleId,
-            SchoolId = user.SchoolId
-        });
-
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync();
-
-        var dto = new UserProfileDto
-        {
-            Id = user.Id,
-            Username = user.Username,
-            FullName = user.FullName,
-            Email = user.Email,
-            RoleId = user.RoleId,
-            RoleName = user.RoleName,
-            SchoolId = user.SchoolId,
-            BranchId = user.BranchId,
-            Avatar = user.Avatar,
-            Phone = user.Phone,
-            IsActive = user.IsActive
-        };
-
-        return Ok(ApiResponse<UserProfileDto>.Ok(dto, "User account created successfully in database"));
+        return Ok(ApiResponse<UserProfileDto>.Ok(user!, "User account created successfully in database"));
     }
 
     [HttpPut("{id}")]
+    [Authorize(Policy = SchoolManagement.Api.Security.SecurityPolicies.CampusAdministrator)]
     public async Task<ActionResult<ApiResponse<UserProfileDto>>> UpdateUser(string id, [FromBody] UpdateUserRequest request)
     {
-        var user = await _context.Users.Include(u => u.UserRoles).FirstOrDefaultAsync(u => u.Id == id);
-        if (user == null) return NotFound(ApiResponse<UserProfileDto>.Fail("User not found"));
-
-        user.FullName = request.FullName.Trim();
-        user.Email = request.Email.Trim();
-        user.Phone = request.Phone?.Trim() ?? user.Phone;
-        user.IsActive = request.IsActive;
-
-        if (!string.IsNullOrEmpty(request.RoleId) && request.RoleId != user.RoleId)
+        var (user, error) = await _userService.UpdateUserAsync(id, request, _currentUser.BranchId);
+        if (!string.IsNullOrEmpty(error))
         {
-            var role = await _context.Roles.FindAsync(request.RoleId);
-            if (role != null)
-            {
-                user.RoleId = role.Id;
-                user.RoleName = role.Name;
-
-                user.UserRoles.Clear();
-                user.UserRoles.Add(new UserRole
-                {
-                    UserId = user.Id,
-                    RoleId = role.Id,
-                    SchoolId = user.SchoolId
-                });
-            }
+            return error == "User not found"
+                ? NotFound(ApiResponse<UserProfileDto>.Fail(error))
+                : BadRequest(ApiResponse<UserProfileDto>.Fail(error));
         }
 
-        user.UpdatedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
-
-        var dto = new UserProfileDto
-        {
-            Id = user.Id,
-            Username = user.Username,
-            FullName = user.FullName,
-            Email = user.Email,
-            RoleId = user.RoleId,
-            RoleName = user.RoleName,
-            SchoolId = user.SchoolId,
-            BranchId = user.BranchId,
-            Avatar = user.Avatar,
-            Phone = user.Phone,
-            IsActive = user.IsActive
-        };
-
-        return Ok(ApiResponse<UserProfileDto>.Ok(dto, "User profile updated successfully"));
+        return Ok(ApiResponse<UserProfileDto>.Ok(user!, "User profile updated successfully"));
     }
 
     [HttpPut("{id}/toggle-status")]
+    [Authorize(Policy = SchoolManagement.Api.Security.SecurityPolicies.CampusAdministrator)]
     public async Task<ActionResult<ApiResponse<bool>>> ToggleUserStatus(string id)
     {
-        var user = await _context.Users.FindAsync(id);
-        if (user == null) return NotFound(ApiResponse<bool>.Fail("User not found"));
-
-        if (user.Username.ToLower() == "admin")
+        var (success, isActive, error) = await _userService.ToggleUserStatusAsync(id, _currentUser.BranchId);
+        if (!success)
         {
-            return BadRequest(ApiResponse<bool>.Fail("Cannot deactivate the primary System Administrator account."));
+            return error == "User not found"
+                ? NotFound(ApiResponse<bool>.Fail(error!))
+                : BadRequest(ApiResponse<bool>.Fail(error!));
         }
 
-        user.IsActive = !user.IsActive;
-        user.UpdatedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
-
-        return Ok(ApiResponse<bool>.Ok(user.IsActive, $"User account is now {(user.IsActive ? "Active" : "Deactivated")}"));
+        return Ok(ApiResponse<bool>.Ok(isActive!.Value, $"User account is now {(isActive.Value ? "Active" : "Deactivated")}"));
     }
 
     [HttpPut("{id}/reset-password")]
+    [Authorize(Policy = SchoolManagement.Api.Security.SecurityPolicies.CampusAdministrator)]
     public async Task<ActionResult<ApiResponse<bool>>> ResetPassword(string id, [FromBody] ResetPasswordRequest request)
     {
-        var user = await _context.Users.FindAsync(id);
-        if (user == null) return NotFound(ApiResponse<bool>.Fail("User not found"));
+        var (success, error) = await _userService.ResetPasswordAsync(id, _currentUser.BranchId, request.NewPassword);
+        if (!success) return NotFound(ApiResponse<bool>.Fail(error ?? "User not found"));
 
-        var newPwd = string.IsNullOrWhiteSpace(request.NewPassword) ? "password123" : request.NewPassword;
-        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPwd);
-        user.UpdatedAt = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync();
-        return Ok(ApiResponse<bool>.Ok(true, $"Password for {user.Username} reset successfully"));
+        return Ok(ApiResponse<bool>.Ok(true, "Password reset successfully"));
     }
 
     [HttpGet("{id}/menu-permissions")]
+    [Authorize(Policy = SchoolManagement.Api.Security.SecurityPolicies.CampusAdministrator)]
     public async Task<ActionResult<ApiResponse<List<UserMenuOverrideDto>>>> GetUserOverrides(string id)
     {
-        var overrides = await _context.UserMenuPermissions
-            .AsNoTracking()
-            .Where(u => u.UserId == id)
-            .Select(o => new UserMenuOverrideDto
-            {
-                UserId = o.UserId,
-                MenuCode = o.MenuCode,
-                Action = o.Action,
-                Override = o.Override.ToString()
-            })
-            .ToListAsync();
+        var (overrides, error) = await _userService.GetUserOverridesAsync(id, _currentUser.BranchId);
+        if (!string.IsNullOrEmpty(error)) return NotFound();
 
-        return Ok(ApiResponse<List<UserMenuOverrideDto>>.Ok(overrides));
+        return Ok(ApiResponse<List<UserMenuOverrideDto>>.Ok(overrides!));
     }
 
     [HttpPut("{id}/menu-permissions")]
+    [Authorize(Policy = SchoolManagement.Api.Security.SecurityPolicies.CampusAdministrator)]
     public async Task<ActionResult<ApiResponse<bool>>> UpdateUserOverrides(string id, [FromBody] List<UserMenuOverrideDto> request)
     {
-        var existing = await _context.UserMenuPermissions.Where(u => u.UserId == id).ToListAsync();
-        _context.UserMenuPermissions.RemoveRange(existing);
+        var (success, error) = await _userService.UpdateUserOverridesAsync(id, _currentUser.BranchId, request, _currentUser.Username ?? "admin");
+        if (!success) return NotFound();
 
-        foreach (var item in request)
-        {
-            if (Enum.TryParse<OverrideType>(item.Override, true, out var overrideType))
-            {
-                _context.UserMenuPermissions.Add(new UserMenuPermission
-                {
-                    UserId = id,
-                    MenuCode = item.MenuCode,
-                    Action = item.Action,
-                    Override = overrideType,
-                    GrantedBy = "admin"
-                });
-            }
-        }
-
-        await _context.SaveChangesAsync();
         return Ok(ApiResponse<bool>.Ok(true, "User permission overrides updated successfully in database"));
     }
-}
 
-public class CreateUserRequest
-{
-    public string Username { get; set; } = string.Empty;
-    public string FullName { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-    public string RoleId { get; set; } = string.Empty;
-    public string? RoleName { get; set; }
-    public string? Phone { get; set; }
-    public string? SchoolId { get; set; }
-    public string? BranchId { get; set; }
-    public string? Avatar { get; set; }
-}
+    [HttpPost("change-password")]
+    public async Task<ActionResult<ApiResponse<bool>>> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        var currentUserId = _currentUser.UserId;
+        if (string.IsNullOrEmpty(currentUserId))
+        {
+            return Unauthorized(ApiResponse<bool>.Fail("User identity could not be verified."));
+        }
 
-public class UpdateUserRequest
-{
-    public string FullName { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string? Phone { get; set; }
-    public string? RoleId { get; set; }
-    public bool IsActive { get; set; } = true;
-}
+        var (success, error) = await _userService.ChangePasswordAsync(currentUserId, request.CurrentPassword, request.NewPassword);
+        if (!success)
+        {
+            return BadRequest(ApiResponse<bool>.Fail(error ?? "Could not change password."));
+        }
 
-public class ResetPasswordRequest
-{
-    public string NewPassword { get; set; } = string.Empty;
+        return Ok(ApiResponse<bool>.Ok(true, "Password changed successfully."));
+    }
+
+    [HttpPut("my-profile")]
+    public async Task<ActionResult<ApiResponse<UserProfileDto>>> UpdateMyProfile([FromBody] UpdateMyProfileRequest request)
+    {
+        var currentUserId = _currentUser.UserId;
+        if (string.IsNullOrEmpty(currentUserId))
+        {
+            return Unauthorized(ApiResponse<UserProfileDto>.Fail("User identity could not be verified."));
+        }
+
+        var (user, error) = await _userService.UpdateMyProfileAsync(currentUserId, request, _currentUser.IsSuperAdmin);
+        if (!string.IsNullOrEmpty(error))
+        {
+            return NotFound(ApiResponse<UserProfileDto>.Fail(error));
+        }
+
+        return Ok(ApiResponse<UserProfileDto>.Ok(user!, "Profile updated successfully."));
+    }
 }

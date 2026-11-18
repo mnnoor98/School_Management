@@ -1,0 +1,15 @@
+{
+    "databaseBackup":  "G:\\dotnetproject\\School_management\\backend\\backups\\pre_role_menus_20261021_163234.dump",
+    "webBackup":  "G:\\dotnetproject\\School_management\\backend\\src\\SchoolManagement.Api\\deployments\\backups\\pre_role_menus_web_20261021_163234.zip",
+    "binaryBackup":  "G:\\dotnetproject\\School_management\\backend\\src\\SchoolManagement.Api\\deployments\\backups\\pre_role_menus_api_20261021_163304.zip",
+    "activatedAtUtc":  "2026-10-21T16:35:55.1257428Z",
+    "verifiedBundle":  "main-6SWM5BMS.js",
+    "verifiedRoles":  [
+                          "SUPER_ADMIN",
+                          "TEACHER",
+                          "ACCOUNTANT",
+                          "STUDENT",
+                          "GUARDIAN"
+                      ],
+    "securityTestsPassed":  96
+}

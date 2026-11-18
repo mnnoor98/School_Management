@@ -1,9 +1,12 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { CampusImageDirective } from '../../shared/components/campus-image.directive';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MockDbService } from '../../core/services/mock-db.service';
+import { AdminStoreService } from '../../core/services/stores/admin-store.service';
 import { ToastService } from '../../core/services/toast.service';
-import { User, Role, MenuItem, UserMenuOverride, OverrideType, PermissionAction } from '../../core/models';
+import { User, Role, MenuItem, UserMenuOverride, OverrideType, PermissionAction, Branch } from '../../core/models';
 import { BadgeComponent } from '../../shared/components/badge.component';
 import { IconComponent } from '../../shared/components/icon.component';
 import { ModalComponent } from '../../shared/components/modal.component';
@@ -18,7 +21,7 @@ interface UserPermissionRow {
 @Component({
   selector: 'app-user-permissions',
   standalone: true,
-  imports: [CommonModule, FormsModule, BadgeComponent, IconComponent, ModalComponent],
+  imports: [CampusImageDirective, CommonModule, FormsModule, BadgeComponent, IconComponent, ModalComponent],
   template: `
     <div class="page-container">
       <!-- PAGE HEADER -->
@@ -45,6 +48,44 @@ interface UserPermissionRow {
             <app-icon name="check" [size]="16" *ngIf="!isSavingOverrides"></app-icon>
             <span>{{ isSavingOverrides ? 'Saving Overrides...' : 'Save User Overrides' }}</span>
           </button>
+        </div>
+      </div>
+
+
+      <!-- LUXURY CAMPUS CONTEXT COMMAND STRIP -->
+      <div class="campus-command-strip mb-4" *ngIf="activeBranch">
+        <div class="campus-strip-left">
+          <div class="campus-avatar-icon">
+            <app-icon name="building" [size]="22" class="text-primary"></app-icon>
+          </div>
+          <div class="campus-meta">
+            <div class="campus-eyebrow">
+              <span class="active-dot"></span>
+              CURRENTLY MANAGING USERS FOR:
+            </div>
+            <div class="campus-title-wrap">
+              <h2 class="campus-title">{{ activeBranch.name }}</h2>
+              <span class="campus-code-badge">{{ activeBranch.code }}</span>
+              <span class="campus-scope-tag">Campus Isolated Scope</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="campus-strip-right" *ngIf="isSuperAdmin && branches.length > 0">
+          <span class="strip-label">Switch Campus:</span>
+          <div class="campus-pill-group">
+            <button
+              type="button"
+              *ngFor="let b of branches"
+              class="campus-pill-btn"
+              [class.active]="activeBranch.id === b.id"
+              (click)="selectCampus(b)"
+              [title]="'Switch user directory to ' + b.name"
+            >
+              <span class="pill-dot" *ngIf="activeBranch.id === b.id"></span>
+              <span>{{ b.name }}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -112,9 +153,9 @@ interface UserPermissionRow {
           <div class="card-header">
             <div class="card-title">
               <app-icon name="users" [size]="18" class="text-primary"></app-icon>
-              <span>Registered Accounts in PostgreSQL</span>
+              <span>Registered Accounts for {{ activeBranch?.name || 'Active Campus' }}</span>
             </div>
-            <span class="text-xs text-muted">Showing {{ filteredUsers.length }} of {{ users.length }} accounts</span>
+            <span class="text-xs text-muted">Showing {{ filteredUsers.length }} of {{ users.length }} accounts in {{ activeBranch?.name || 'Selected Campus' }}</span>
           </div>
 
           <div class="app-table-wrapper">
@@ -133,10 +174,11 @@ interface UserPermissionRow {
                 <tr *ngFor="let u of filteredUsers">
                   <td>
                     <div class="user-profile-cell">
-                      <img [src]="u.avatar" [alt]="u.fullName" class="user-table-avatar" />
+                      <img campusImage [src]="u.avatar" [alt]="u.fullName" class="user-table-avatar" />
                       <div>
                         <strong class="user-table-name">{{ u.fullName }}</strong>
                         <span class="user-id-code">ID: {{ u.id }}</span>
+                        <span class="campus-sub-tag" *ngIf="activeBranch">{{ activeBranch.name }}</span>
                       </div>
                     </div>
                   </td>
@@ -200,8 +242,21 @@ interface UserPermissionRow {
                   </td>
                 </tr>
                 <tr *ngIf="filteredUsers.length === 0">
-                  <td colspan="6" class="text-center py-4 text-muted">
-                    No matching user accounts found.
+                  <td colspan="6" class="p-0">
+                    <div class="empty-campus-users-card">
+                      <div class="empty-users-icon">
+                        <app-icon name="users" [size]="36"></app-icon>
+                      </div>
+                      <h3 class="empty-users-title">No Accounts Found in {{ activeBranch?.name || 'Selected Campus' }}</h3>
+                      <p class="empty-users-desc">
+                        There are currently no users created for <strong>{{ activeBranch?.name || 'this campus' }}</strong>.
+                        Every user created here will be strictly isolated to {{ activeBranch?.name || 'this campus' }}.
+                      </p>
+                      <button type="button" class="btn btn-primary" (click)="openCreateUserModal()">
+                        <app-icon name="user-plus" [size]="16"></app-icon>
+                        <span>Create First User for {{ activeBranch?.name || 'This Campus' }}</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -246,7 +301,7 @@ interface UserPermissionRow {
               </div>
 
               <div class="user-summary-card" *ngIf="selectedUser">
-                <img [src]="selectedUser.avatar" [alt]="selectedUser.fullName" class="target-avatar" />
+                <img campusImage [src]="selectedUser.avatar" [alt]="selectedUser.fullName" class="target-avatar" />
                 <div>
                   <h4 class="target-name">{{ selectedUser.fullName }}</h4>
                   <div class="target-details">
@@ -359,6 +414,22 @@ interface UserPermissionRow {
       (closed)="closeCreateModal()"
     >
       <div body class="modal-form">
+        <!-- ACTIVE CAMPUS TARGET SCOPE CALLOUT -->
+        <div class="campus-target-callout" *ngIf="activeBranch">
+          <div class="callout-icon-wrap">
+            <app-icon name="map-pin" [size]="20" class="text-primary"></app-icon>
+          </div>
+          <div class="callout-details">
+            <div class="callout-title">
+              Target Campus: <strong>{{ activeBranch.name }}</strong>
+              <span class="campus-code-badge ml-1">{{ activeBranch.code }}</span>
+            </div>
+            <div class="callout-sub">
+              This account will be permanently scoped to <strong>{{ activeBranch.name }}</strong>. All academic records, attendance, and finance actions by this user will be isolated to this campus.
+            </div>
+          </div>
+        </div>
+
         <div class="grid-2">
           <div class="form-group">
             <label class="form-label">Username <span class="required">*</span></label>
@@ -367,7 +438,7 @@ interface UserPermissionRow {
           <div class="form-group">
             <label class="form-label">Role <span class="required">*</span></label>
             <select class="form-select" [(ngModel)]="createForm.roleId">
-              <option *ngFor="let r of roles" [value]="r.id">{{ r.name }}</option>
+              <option *ngFor="let r of assignableRoles" [value]="r.id">{{ r.name }}</option>
             </select>
           </div>
         </div>
@@ -432,7 +503,7 @@ interface UserPermissionRow {
           <div class="form-group">
             <label class="form-label">Assigned Role <span class="required">*</span></label>
             <select class="form-select" [(ngModel)]="editForm.roleId">
-              <option *ngFor="let r of roles" [value]="r.id">{{ r.name }}</option>
+              <option *ngFor="let r of assignableRoles" [value]="r.id">{{ r.name }}</option>
             </select>
           </div>
           <div class="form-group">
@@ -753,6 +824,217 @@ interface UserPermissionRow {
       background: #faf5ff;
     }
 
+    
+    /* Luxury Campus Command Strip */
+    .campus-command-strip {
+      background: #ffffff;
+      border: 1px solid var(--border-color, #e2e8f0);
+      border-radius: 14px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+      flex-wrap: wrap;
+    }
+    .campus-strip-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .campus-avatar-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: #eef2ff;
+      border: 1px solid #c7d2fe;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .campus-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .campus-eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.6875rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      color: #64748b;
+      text-transform: uppercase;
+    }
+    .active-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+      display: inline-block;
+    }
+    .campus-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .campus-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0;
+      line-height: 1.2;
+    }
+    .campus-code-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: #f1f5f9;
+      color: #475569;
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-family: monospace;
+      border: 1px solid #cbd5e1;
+    }
+    .campus-scope-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #4f46e5;
+      background: #eef2ff;
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid #c7d2fe;
+    }
+    .campus-strip-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .strip-label {
+      font-size: 0.8125rem;
+      font-weight: 700;
+      color: #64748b;
+    }
+    .campus-pill-group {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .campus-pill-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 9999px;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      color: #475569;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .campus-pill-btn:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+      border-color: #94a3b8;
+    }
+    .campus-pill-btn.active {
+      background: #0f172a;
+      color: #ffffff;
+      border-color: #0f172a;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+    }
+    .pill-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #34d399;
+    }
+    .p-0 { padding: 0 !important; }
+    .ml-1 { margin-left: 4px; }
+    .empty-campus-users-card {
+      padding: 44px 24px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #fafbfc;
+      border-radius: 8px;
+    }
+    .empty-users-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: #eef2ff;
+      color: #4f46e5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+      border: 1px solid #c7d2fe;
+    }
+    .empty-users-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0 0 6px 0;
+    }
+    .empty-users-desc {
+      max-width: 440px;
+      font-size: 0.84rem;
+      color: #64748b;
+      line-height: 1.5;
+      margin: 0 0 18px 0;
+    }
+    .campus-target-callout {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-left: 4px solid #4f46e5;
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .callout-icon-wrap {
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .callout-details {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .callout-title {
+      font-size: 0.875rem;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+    }
+    .callout-sub {
+      font-size: 0.775rem;
+      color: #64748b;
+      line-height: 1.4;
+    }
+    .campus-sub-tag {
+      display: inline-block;
+      margin-top: 2px;
+      font-size: 0.6875rem;
+      color: #4f46e5;
+      background: #eef2ff;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      margin-left: 6px;
+    }
+
     /* Modal */
     .modal-form {
       display: flex;
@@ -767,15 +1049,26 @@ interface UserPermissionRow {
     }
   `]
 })
-export class UserPermissionsComponent implements OnInit {
-  private db = inject(MockDbService);
+export class UserPermissionsComponent implements OnInit, OnDestroy {
+  private db = inject(AdminStoreService);
   private toast = inject(ToastService);
+  private cdr = inject(ChangeDetectorRef);
+  private destroy$ = new Subject<void>();
+
+  branches: Branch[] = [];
+  activeBranch: Branch | null = null;
+  isSuperAdmin = false;
 
   activeTab: 'users' | 'overrides' = 'users';
 
   users: User[] = [];
   roles: Role[] = [];
   menus: MenuItem[] = [];
+
+  get assignableRoles(): Role[] {
+    if (this.isSuperAdmin) return this.roles;
+    return this.roles.filter(r => r.code !== 'SUPER_ADMIN' && !r.name.includes('Super Admin'));
+  }
 
   // Filter state
   searchTerm = '';
@@ -819,38 +1112,76 @@ export class UserPermissionsComponent implements OnInit {
   newPassword = 'password123';
 
   ngOnInit() {
-    this.db.getUsers$().subscribe(u => {
+    this.isSuperAdmin = this.db.isSuperAdmin();
+
+    this.db.getBranches$().pipe(takeUntil(this.destroy$)).subscribe(b => {
+      this.branches = b;
+      this.cdr.markForCheck();
+    });
+
+    this.db.getSelectedBranch$().pipe(takeUntil(this.destroy$)).subscribe(branch => {
+      this.activeBranch = branch;
+      this.cdr.markForCheck();
+    });
+
+    this.db.getUsers$().pipe(takeUntil(this.destroy$)).subscribe(u => {
       this.users = u;
       if (!this.selectedUserId && u.length > 0) {
         this.selectedUserId = u[0].id;
         this.selectedUser = u[0];
         this.buildMatrix();
       }
+      this.cdr.markForCheck();
     });
 
-    this.db.getRoles$().subscribe(r => {
+    this.db.getRoles$().pipe(takeUntil(this.destroy$)).subscribe(r => {
       this.roles = r;
       if (!this.createForm.roleId && r.length > 0) {
         this.createForm.roleId = r[0].id;
       }
+      this.cdr.markForCheck();
     });
 
-    this.db.getMenus$().subscribe(m => {
+    this.db.getMenus$().pipe(takeUntil(this.destroy$)).subscribe(m => {
       this.menus = m;
       this.buildMatrix();
+      this.cdr.markForCheck();
     });
 
     this.loadFreshData();
   }
 
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  async selectCampus(branch: Branch) {
+    if (!this.isSuperAdmin || !branch?.id || branch.id === this.activeBranch?.id) return;
+    this.isLoading = true;
+    this.cdr.markForCheck();
+    try {
+      await this.db.setSelectedBranch(branch);
+      this.activeBranch = branch;
+      await this.loadFreshData();
+    } catch {
+      this.toast.error('Error', 'Failed to switch campus.');
+    } finally {
+      this.isLoading = false;
+      this.cdr.markForCheck();
+    }
+  }
+
   async loadFreshData() {
     this.isLoading = true;
+    this.cdr.markForCheck();
     try {
       await this.db.refreshAllFromBackend();
     } catch {
       // Handled silently
     } finally {
       this.isLoading = false;
+      this.cdr.markForCheck();
     }
   }
 
@@ -1005,14 +1336,16 @@ export class UserPermissionsComponent implements OnInit {
       phone: this.createForm.phone.trim(),
       roleId: this.createForm.roleId,
       roleName: selectedRole?.name || 'Teacher',
-      password: this.createForm.password.trim() || 'password123'
+      password: this.createForm.password.trim() || 'password123',
+      branchId: this.activeBranch?.id
     }).subscribe({
-      next: res => {
+      next: async res => {
         this.isSubmitting = false;
         if (res && res.success) {
-          this.toast.success('Account Created', `User ${res.data.fullName} registered in PostgreSQL.`);
+          this.toast.success('Account Created', `User ${res.data.fullName} registered for ${this.activeBranch?.name || 'Campus'}.`);
           this.closeCreateModal();
-          this.db.refreshAllFromBackend();
+          await this.db.refreshAllFromBackend();
+          this.cdr.markForCheck();
         } else {
           this.toast.error('Error', res?.message || 'Could not create user account.');
         }
@@ -1020,6 +1353,7 @@ export class UserPermissionsComponent implements OnInit {
       error: err => {
         this.isSubmitting = false;
         this.toast.error('Error', err?.error?.message || 'Server error creating user.');
+        this.cdr.markForCheck();
       }
     });
   }
@@ -1054,6 +1388,7 @@ export class UserPermissionsComponent implements OnInit {
           this.toast.success('Profile Updated', 'User account updated successfully in database.');
           this.closeEditModal();
           this.db.refreshAllFromBackend();
+          this.cdr.markForCheck();
         } else {
           this.toast.error('Error', res?.message || 'Could not update user.');
         }
@@ -1061,6 +1396,7 @@ export class UserPermissionsComponent implements OnInit {
       error: err => {
         this.isSubmitting = false;
         this.toast.error('Error', err?.error?.message || 'Server error updating user.');
+        this.cdr.markForCheck();
       }
     });
   }
@@ -1071,6 +1407,7 @@ export class UserPermissionsComponent implements OnInit {
         if (res && res.success) {
           this.toast.info('Status Changed', res.message);
           this.db.refreshAllFromBackend();
+          this.cdr.markForCheck();
         } else {
           this.toast.error('Error', res?.message || 'Could not change status.');
         }
@@ -1102,6 +1439,7 @@ export class UserPermissionsComponent implements OnInit {
         if (res && res.success) {
           this.toast.success('Password Reset', res.message || 'Password updated in database.');
           this.closeResetModal();
+          this.cdr.markForCheck();
         } else {
           this.toast.error('Error', res?.message || 'Could not reset password.');
         }
@@ -1109,6 +1447,7 @@ export class UserPermissionsComponent implements OnInit {
       error: err => {
         this.isSubmitting = false;
         this.toast.error('Error', err?.error?.message || 'Failed to reset password.');
+        this.cdr.markForCheck();
       }
     });
   }

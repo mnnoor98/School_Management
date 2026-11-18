@@ -1,0 +1,85 @@
+name: CI / CD Automated Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-ci:
+    name: Backend Build & Security Tests (.NET 8)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore Backend Dependencies
+        run: dotnet restore backend/SchoolManagement.sln
+
+      - name: Build Solution (Release)
+        run: dotnet build backend/SchoolManagement.sln --configuration Release --no-restore
+
+      - name: Run Security & Integration Test Suite (96 Tests)
+        run: dotnet test backend/tests/SchoolManagement.SecurityTests/SchoolManagement.SecurityTests.csproj --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=test_results.trx"
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: backend/tests/SchoolManagement.SecurityTests/TestResults/
+
+  frontend-ci:
+    name: Frontend Quality & Production Build (Angular)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: Fontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        working-directory: ./Fontend
+        run: npm ci
+
+      - name: Validate TypeScript & Compile Production Bundle
+        working-directory: ./Fontend
+        run: npm run build
+
+      - name: Upload Production Dist Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: Fontend/dist/school-management-frontend
+
+  container-validation:
+    name: Container Build & Docker Compose Validation
+    runs-on: ubuntu-latest
+    needs: [ backend-ci, frontend-ci ]
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validate Docker Compose Configuration
+        run: docker compose config
+
+      - name: Build Docker Container Images
+        run: docker compose build

@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # Database: PostgreSQL 16
+  postgres:
+    image: postgres:16-alpine
+    container_name: sms_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: school_management
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d school_management"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Backend: ASP.NET Core 8 Web API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sms_backend
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-school_management};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123456}
+      - Jwt__SecretKey=${JWT_SECRET_KEY:-SuperSecretKeyForSchoolManagementSystem2026!@#$%^&*()_+}
+      - Jwt__Issuer=${JWT_ISSUER:-SchoolManagementApi}
+      - Jwt__Audience=${JWT_AUDIENCE:-SchoolManagementClient}
+      - Jwt__ExpiryHours=${JWT_EXPIRY_HOURS:-8}
+      - Cors__AllowedOrigins__0=${FRONTEND_URL:-http://localhost:4200}
+      - FeatureManagement__EnableWebDeployment=${FEATURE_ENABLE_WEB_DEPLOYMENT:-false}
+      - FeatureManagement__EnableWebDatabaseBackup=${FEATURE_ENABLE_WEB_BACKUP:-true}
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Frontend: Angular 18/22 + Nginx Reverse Proxy
+  frontend:
+    build:
+      context: ./Fontend
+      dockerfile: Dockerfile
+    container_name: sms_frontend
+    restart: unless-stopped
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+    driver: local

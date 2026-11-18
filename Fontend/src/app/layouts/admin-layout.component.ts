@@ -1,17 +1,20 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { CampusImageDirective } from '../shared/components/campus-image.directive';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../core/services/auth.service';
-import { MockDbService } from '../core/services/mock-db.service';
+import { AdminStoreService } from '../core/services/stores/admin-store.service';
 import { MenuItem, User, Branch } from '../core/models';
 import { IconComponent } from '../shared/components/icon.component';
 import { ToastContainerComponent } from '../shared/components/toast-container.component';
+import { ToastService } from '../core/services/toast.service';
+import { ModalComponent } from '../shared/components/modal.component';
 
 @Component({
   selector: 'app-admin-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, IconComponent, ToastContainerComponent],
+  imports: [CampusImageDirective, CommonModule, RouterModule, FormsModule, IconComponent, ToastContainerComponent, ModalComponent],
   template: `
     <app-toast-container></app-toast-container>
     <div class="app-layout" [class.sidebar-collapsed]="isSidebarCollapsed">
@@ -30,10 +33,27 @@ import { ToastContainerComponent } from '../shared/components/toast-container.co
 
         <!-- School / Branch Scope Indicator (PDF Page 3) -->
         <div class="sidebar-scope" *ngIf="!isSidebarCollapsed">
-          <span class="scope-label">Branch Scope</span>
-          <select class="scope-select" [(ngModel)]="selectedBranchId" (change)="onBranchChange()">
-            <option *ngFor="let b of branches" [value]="b.id">{{ b.name }}</option>
-          </select>
+          <div class="scope-header-row">
+            <span class="scope-label">Campus Scope</span>
+            <span class="scope-badge global" *ngIf="isSuperAdmin">Global Admin</span>
+            <span class="scope-badge locked" *ngIf="!isSuperAdmin">
+              <app-icon name="lock" [size]="10"></app-icon> Locked
+            </span>
+          </div>
+
+          <!-- Super Admin: Can switch between All Campuses or specific Campus -->
+          <div *ngIf="isSuperAdmin" class="scope-select-wrap">
+            <select class="scope-select" [(ngModel)]="selectedBranchId" (change)="onBranchChange()">
+              <option value="" disabled>Select a campus</option>
+              <option *ngFor="let b of branches" [value]="b.id" [disabled]="!b.isActive">📍 {{ b.name }}</option>
+            </select>
+          </div>
+
+          <!-- Non-Super Admin: Strictly locked to their assigned campus -->
+          <div *ngIf="!isSuperAdmin" class="scope-locked-display" [title]="'Data strictly locked to ' + getCurrentUserBranchName()">
+            <app-icon name="map-pin" [size]="14" class="campus-pin-icon"></app-icon>
+            <span class="campus-name">{{ getCurrentUserBranchName() }}</span>
+          </div>
         </div>
 
         <!-- Dynamic Menu List (PDF Section 02 & Section 03) -->
@@ -95,7 +115,7 @@ import { ToastContainerComponent } from '../shared/components/toast-container.co
         <!-- Sidebar User Footer -->
         <div class="sidebar-footer" *ngIf="currentUser">
           <div class="user-pill" *ngIf="!isSidebarCollapsed">
-            <img [src]="currentUser.avatar" [alt]="currentUser.fullName" class="user-avatar" />
+            <img campusImage [src]="currentUser.avatar" [alt]="currentUser.fullName" class="user-avatar" />
             <div class="user-info">
               <span class="user-name">{{ currentUser.fullName }}</span>
               <span class="user-role">{{ currentUser.roleName }}</span>
@@ -123,21 +143,6 @@ import { ToastContainerComponent } from '../shared/components/toast-container.co
           </div>
 
           <div class="topbar-right">
-            <!-- Sleek Role Testing Switcher (For Demo & Verification) -->
-            <div class="role-switcher-pill">
-              <div class="switcher-icon-wrap">
-                <app-icon name="shield-check" [size]="16"></app-icon>
-              </div>
-              <div class="switcher-content">
-                <span class="switcher-hint">Role Preview:</span>
-                <select class="role-switcher-select" [(ngModel)]="currentUserId" (change)="onRoleSwitch()">
-                  <option *ngFor="let u of allUsers" [value]="u.id">
-                    {{ u.roleName }}
-                  </option>
-                </select>
-              </div>
-            </div>
-
             <!-- Audit Trail Shortcut -->
             <a routerLink="/app/admin/audit-log" class="topbar-action-btn" title="Audit Trail">
               <app-icon name="history" [size]="18"></app-icon>
@@ -145,14 +150,17 @@ import { ToastContainerComponent } from '../shared/components/toast-container.co
 
             <!-- User Profile Summary -->
             <div class="topbar-profile" *ngIf="currentUser">
-              <div class="profile-avatar-wrap">
-                <img [src]="currentUser.avatar" [alt]="currentUser.fullName" class="profile-thumb" />
+              <div class="profile-avatar-wrap" (click)="openProfileModal()" style="cursor: pointer;" title="Profile & Account Settings">
+                <img campusImage [src]="currentUser.avatar" [alt]="currentUser.fullName" class="profile-thumb" />
                 <span class="online-indicator"></span>
               </div>
-              <div class="profile-meta">
+              <div class="profile-meta" (click)="openProfileModal()" style="cursor: pointer;" title="Profile & Account Settings">
                 <span class="meta-name">{{ currentUser.fullName }}</span>
                 <span class="meta-role">{{ currentUser.roleName }}</span>
               </div>
+              <button type="button" class="btn-topbar-action" (click)="openProfileModal()" title="Account Settings & Password">
+                <app-icon name="user" [size]="16"></app-icon>
+              </button>
               <button type="button" class="btn-topbar-logout" (click)="logout()" title="Sign Out">
                 <app-icon name="log-out" [size]="16"></app-icon>
               </button>
@@ -166,6 +174,120 @@ import { ToastContainerComponent } from '../shared/components/toast-container.co
         </main>
       </div>
     </div>
+
+    <!-- USER PROFILE & PASSWORD MODAL -->
+    <app-modal
+      [(isOpen)]="isProfileModalOpen"
+      title="User Account & Security Settings"
+      subtitle="Manage your personal profile details, profile photo, and security credentials."
+      [maxWidth]="560"
+    >
+      <div *ngIf="currentUser" class="profile-modal-body">
+        <!-- Tab Switcher -->
+        <div class="modal-tab-bar mb-3">
+          <button
+            type="button"
+            class="m-tab-btn"
+            [class.active]="profileTab === 'info'"
+            (click)="profileTab = 'info'"
+          >
+            <app-icon name="user" [size]="16"></app-icon>
+            <span>My Profile</span>
+          </button>
+          <button
+            type="button"
+            class="m-tab-btn"
+            [class.active]="profileTab === 'password'"
+            (click)="profileTab = 'password'"
+          >
+            <app-icon name="lock" [size]="16"></app-icon>
+            <span>Change Password</span>
+          </button>
+        </div>
+
+        <!-- TAB 1: Profile Info & Photo Upload -->
+        <div *ngIf="profileTab === 'info'">
+          <div class="profile-photo-row mb-3">
+            <div class="avatar-preview-box">
+              <img campusImage [src]="editProfile.avatar || currentUser.avatar" class="avatar-preview-img" alt="Avatar" />
+              <label class="btn-upload-avatar">
+                <app-icon name="camera" [size]="14"></app-icon>
+                <span>{{ isUploadingAvatar ? 'Uploading...' : 'Upload' }}</span>
+                <input type="file" accept="image/*" (change)="onAvatarFileChange($event)" [disabled]="isUploadingAvatar" style="display: none;" />
+              </label>
+            </div>
+            <div class="account-meta-box">
+              <div class="text-xs text-muted uppercase font-bold">Account Persona</div>
+              <div class="font-bold text-slate-800">{{ currentUser.username }}</div>
+              <div class="badge-role-pill mt-1">{{ currentUser.roleName }}</div>
+              <div class="text-xs text-muted mt-1">{{ getCurrentUserBranchName() }}</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Full Name <span class="required">*</span></label>
+            <input type="text" class="form-control" [(ngModel)]="editProfile.fullName" placeholder="Full Name" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" class="form-control" [(ngModel)]="editProfile.email" placeholder="email@school.edu.bd" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Phone / WhatsApp Number</label>
+            <input type="text" class="form-control" [(ngModel)]="editProfile.phone" placeholder="+880 1..." />
+          </div>
+        </div>
+
+        <!-- TAB 2: Change Password -->
+        <div *ngIf="profileTab === 'password'">
+          <div class="form-group">
+            <label class="form-label">Current Password <span class="required">*</span></label>
+            <input type="password" class="form-control" [(ngModel)]="pwdForm.currentPassword" placeholder="Enter current password" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">New Password <span class="required">*</span></label>
+            <input type="password" class="form-control" [(ngModel)]="pwdForm.newPassword" placeholder="Min. 6 characters" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Confirm New Password <span class="required">*</span></label>
+            <input type="password" class="form-control" [(ngModel)]="pwdForm.confirmPassword" placeholder="Re-type new password" />
+          </div>
+
+          <div class="pwd-hint-box text-xs text-muted">
+            <app-icon name="shield" [size]="14" class="text-primary"></app-icon>
+            <span>Password must be at least 6 characters. Do not share your password with anyone.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2" footer>
+        <button type="button" class="btn btn-outline" (click)="isProfileModalOpen = false">Cancel</button>
+        <button
+          *ngIf="profileTab === 'info'"
+          type="button"
+          class="btn btn-primary"
+          (click)="saveProfile()"
+          [disabled]="isSavingProfile"
+        >
+          <app-icon name="check" [size]="16"></app-icon>
+          <span>{{ isSavingProfile ? 'Saving...' : 'Save Profile Changes' }}</span>
+        </button>
+        <button
+          *ngIf="profileTab === 'password'"
+          type="button"
+          class="btn btn-primary"
+          (click)="savePassword()"
+          [disabled]="isSavingPwd"
+        >
+          <app-icon name="lock" [size]="16"></app-icon>
+          <span>{{ isSavingPwd ? 'Updating...' : 'Update Password' }}</span>
+        </button>
+      </div>
+    </app-modal>
   `,
   styles: [`
     .app-layout {
@@ -227,34 +349,85 @@ import { ToastContainerComponent } from '../shared/components/toast-container.co
       letter-spacing: 0.05em;
     }
     .sidebar-scope {
-      padding: 10px 16px;
+      padding: 10px 14px;
       background: #1e293b;
       margin: 12px 14px 4px 14px;
       border-radius: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .scope-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
     }
     .scope-label {
-      display: block;
-      font-size: 0.68rem;
+      font-size: 0.66rem;
       font-weight: 700;
       text-transform: uppercase;
-      color: #64748b;
-      margin-bottom: 4px;
-      letter-spacing: 0.04em;
+      color: #94a3b8;
+      letter-spacing: 0.05em;
+    }
+    .scope-badge {
+      font-size: 0.625rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .scope-badge.global {
+      background: rgba(79, 70, 229, 0.25);
+      color: #a5b4fc;
+      border: 1px solid rgba(165, 180, 252, 0.3);
+    }
+    .scope-badge.locked {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(251, 191, 36, 0.3);
+    }
+    .scope-select-wrap {
+      width: 100%;
     }
     .scope-select {
       width: 100%;
-      background: transparent;
-      border: none;
-      color: #e2e8f0;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 4px 6px;
+      color: #f1f5f9;
       font-size: 0.8rem;
       font-weight: 600;
       outline: none;
       cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .scope-select:focus {
+      border-color: #6366f1;
     }
     .scope-select option {
       background: #0f172a;
       color: #ffffff;
+    }
+    .scope-locked-display {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 2px;
+      color: #e2e8f0;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+    .campus-pin-icon {
+      color: #38bdf8;
+      flex-shrink: 0;
+    }
+    .campus-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     /* NAV ITEMS */
@@ -621,6 +794,113 @@ import { ToastContainerComponent } from '../shared/components/toast-container.co
       background: #fee2e2;
       color: #dc2626;
     }
+    .btn-topbar-action {
+      background: transparent;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .btn-topbar-action:hover {
+      background: #eef2ff;
+      color: #4f46e5;
+    }
+
+    /* Profile Modal Styles */
+    .modal-tab-bar {
+      display: flex;
+      gap: 8px;
+      background: #f1f5f9;
+      padding: 4px;
+      border-radius: 8px;
+    }
+    .m-tab-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px;
+      border: none;
+      background: transparent;
+      color: #64748b;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .m-tab-btn.active {
+      background: #ffffff;
+      color: #4f46e5;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .profile-photo-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: #f8fafc;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+    }
+    .avatar-preview-box {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .avatar-preview-img {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #c7d2fe;
+    }
+    .btn-upload-avatar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-upload-avatar:hover {
+      background: #eef2ff;
+      color: #4f46e5;
+      border-color: #818cf8;
+    }
+    .badge-role-pill {
+      display: inline-block;
+      background: #e0e7ff;
+      color: #3730a3;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .pwd-hint-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #eff6ff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-top: 12px;
+      border: 1px solid #bfdbfe;
+    }
 
     .main-content {
       flex: 1;
@@ -635,17 +915,29 @@ import { ToastContainerComponent } from '../shared/components/toast-container.co
 })
 export class AdminLayoutComponent implements OnInit {
   private auth = inject(AuthService);
-  private db = inject(MockDbService);
+  private db = inject(AdminStoreService);
   private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
 
   school = this.db.getSchool();
   branches = this.db.getBranches();
-  selectedBranchId = this.branches[0]?.id;
-  allUsers = this.db.getUsers();
+  selectedBranchId = '';
+  allUsers = this.db.getAllUsersForTesting();
 
   currentUser: User | null = null;
   currentUserId = '';
   isSidebarCollapsed = false;
+
+  get isSuperAdmin(): boolean {
+    return this.db.isSuperAdmin();
+  }
+
+  getCurrentUserBranchName(): string {
+    const u = this.currentUser;
+    if (!u) return 'Main Campus';
+    const b = this.branches.find(x => x.id === u.branchId);
+    return b ? b.name : (u.branchId === 'br-02' ? 'Uttara Campus' : 'Main Campus (Dhanmondi)');
+  }
 
   dynamicMenus: MenuItem[] = [];
   expandedGroups: { [code: string]: boolean } = {
@@ -667,18 +959,30 @@ export class AdminLayoutComponent implements OnInit {
       this.currentUser = user;
       if (user) {
         this.currentUserId = user.id;
+        if (this.isSuperAdmin) {
+          const sel = this.db.getSelectedBranch();
+          this.selectedBranchId = sel ? sel.id : '';
+        } else {
+          this.selectedBranchId = user.branchId || 'br-01';
+        }
         this.refreshMenu();
       }
     });
 
     this.db.getSchool$().subscribe(s => this.school = s);
+    this.db.getSelectedBranch$().subscribe(branch => {
+      this.selectedBranchId = branch ? branch.id : '';
+      this.cdr.markForCheck();
+    });
     this.db.getBranches$().subscribe(b => {
       this.branches = b;
       if (!this.selectedBranchId && b.length > 0) {
-        this.selectedBranchId = b[0].id;
+        this.selectedBranchId = this.isSuperAdmin ? '' : (this.currentUser?.branchId || b[0].id);
       }
     });
-    this.db.getUsers$().subscribe(u => this.allUsers = u);
+    this.db.getUsers$().subscribe(() => {
+      this.allUsers = this.db.getAllUsersForTesting();
+    });
 
     this.db.getMenus$().subscribe(() => {
       this.refreshMenu();
@@ -695,6 +999,7 @@ export class AdminLayoutComponent implements OnInit {
 
   refreshMenu() {
     this.dynamicMenus = this.auth.getMyMenus();
+    this.cdr.markForCheck();
   }
 
   toggleSidebar() {
@@ -709,15 +1014,118 @@ export class AdminLayoutComponent implements OnInit {
     this.auth.switchRole(this.currentUserId);
   }
 
-  onBranchChange() {
-    const b = this.branches.find(x => x.id === this.selectedBranchId);
-    if (b) {
-      this.db.setSelectedBranch(b);
-      this.db.logAudit('Update', 'Branch Scope', `Switched active branch scope to: ${b.name}`);
-    }
+  async onBranchChange() {
+    if (!this.isSuperAdmin) return;
+    const branch = this.branches.find(b => b.id === this.selectedBranchId);
+    if (!branch) return;
+    await this.db.setSelectedBranch(branch);
+    this.cdr.markForCheck();
   }
 
   logout() {
     this.auth.logout();
+  }
+
+  private toast = inject(ToastService);
+
+  // Profile Modal State
+  isProfileModalOpen = false;
+  profileTab: 'info' | 'password' = 'info';
+  editProfile = {
+    fullName: '',
+    email: '',
+    phone: '',
+    avatar: ''
+  };
+  pwdForm = {
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  };
+  isSavingProfile = false;
+  isSavingPwd = false;
+  isUploadingAvatar = false;
+
+  openProfileModal() {
+    if (this.currentUser) {
+      this.editProfile = {
+        fullName: this.currentUser.fullName || '',
+        email: this.currentUser.email || '',
+        phone: this.currentUser.phone || '',
+        avatar: this.currentUser.avatar || ''
+      };
+      this.pwdForm = {
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      };
+      this.profileTab = 'info';
+      this.isProfileModalOpen = true;
+    }
+  }
+
+  async onAvatarFileChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      this.isUploadingAvatar = true;
+      try {
+        const result = await this.auth.uploadFile(file, 'avatars');
+        if (result && result.url) {
+          this.editProfile.avatar = result.url;
+          this.toast.success('Photo Uploaded', 'New profile avatar preview loaded.');
+        }
+      } catch {
+        this.toast.error('Upload Error', 'Failed to upload avatar photo.');
+      } finally {
+        this.isUploadingAvatar = false;
+      }
+    }
+  }
+
+  async saveProfile() {
+    if (!this.editProfile.fullName?.trim()) {
+      this.toast.error('Validation Error', 'Full Name is required.');
+      return;
+    }
+
+    this.isSavingProfile = true;
+    try {
+      const success = await this.auth.updateProfile(this.editProfile);
+      if (success) {
+        this.isProfileModalOpen = false;
+        this.cdr.markForCheck();
+      }
+    } finally {
+      this.isSavingProfile = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  async savePassword() {
+    if (!this.pwdForm.currentPassword) {
+      this.toast.error('Validation Error', 'Current password is required.');
+      return;
+    }
+    if (!this.pwdForm.newPassword || this.pwdForm.newPassword.length < 6) {
+      this.toast.error('Validation Error', 'New password must be at least 6 characters.');
+      return;
+    }
+    if (this.pwdForm.newPassword !== this.pwdForm.confirmPassword) {
+      this.toast.error('Validation Error', 'New password and confirmation do not match.');
+      return;
+    }
+
+    this.isSavingPwd = true;
+    try {
+      const success = await this.auth.changePassword(this.pwdForm.currentPassword, this.pwdForm.newPassword);
+      if (success) {
+        this.isProfileModalOpen = false;
+        this.cdr.markForCheck();
+      }
+    } finally {
+      this.isSavingPwd = false;
+      this.cdr.markForCheck();
+    }
   }
 }

@@ -13,6 +13,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SchoolManagement.Infrastruc
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SchoolManagement.Api", "src\SchoolManagement.Api\SchoolManagement.Api.csproj", "{6892C582-14C1-4721-BC21-B1965D06384D}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SchoolManagement.SecurityTests", "tests\SchoolManagement.SecurityTests\SchoolManagement.SecurityTests.csproj", "{408DEDDF-E081-4F31-91CE-A5E3F6315BE8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -71,6 +75,18 @@ Global
 		{6892C582-14C1-4721-BC21-B1965D06384D}.Release|x64.Build.0 = Release|Any CPU
 		{6892C582-14C1-4721-BC21-B1965D06384D}.Release|x86.ActiveCfg = Release|Any CPU
 		{6892C582-14C1-4721-BC21-B1965D06384D}.Release|x86.Build.0 = Release|Any CPU
+		{408DEDDF-E081-4F31-91CE-A5E3F6315BE8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{408DEDDF-E081-4F31-91CE-A5E3F6315BE8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{408DEDDF-E081-4F31-91CE-A5E3F6315BE8}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{408DEDDF-E081-4F31-91CE-A5E3F6315BE8}.Debug|x64.Build.0 = Debug|Any CPU
+		{408DEDDF-E081-4F31-91CE-A5E3F6315BE8}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{408DEDDF-E081-4F31-91CE-A5E3F6315BE8}.Debug|x86.Build.0 = Debug|Any CPU
+		{408DEDDF-E081-4F31-91CE-A5E3F6315BE8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{408DEDDF-E081-4F31-91CE-A5E3F6315BE8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{408DEDDF-E081-4F31-91CE-A5E3F6315BE8}.Release|x64.ActiveCfg = Release|Any CPU
+		{408DEDDF-E081-4F31-91CE-A5E3F6315BE8}.Release|x64.Build.0 = Release|Any CPU
+		{408DEDDF-E081-4F31-91CE-A5E3F6315BE8}.Release|x86.ActiveCfg = Release|Any CPU
+		{408DEDDF-E081-4F31-91CE-A5E3F6315BE8}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -80,5 +96,6 @@ Global
 		{BC8050C8-440C-4D51-B642-6BEBCCB13BDA} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{C56EF1F3-2B22-4927-AD87-2A6EA127E023} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{6892C582-14C1-4721-BC21-B1965D06384D} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{408DEDDF-E081-4F31-91CE-A5E3F6315BE8} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

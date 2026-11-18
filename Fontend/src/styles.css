@@ -388,18 +388,107 @@ h1, h2, h3, h4, h5, h6 {
   border-bottom-color: var(--primary);
 }
 
-/* Print Stylesheet for Report Cards and Receipts */
+/* Print Stylesheet for Report Cards, Official Receipts, and Vouchers */
 @media print {
-  .sidebar, .topbar, .btn, .page-header, .no-print {
+  @page {
+    size: A4 portrait;
+    margin: 5mm 8mm;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .sidebar,
+  .topbar,
+  .btn,
+  .page-header,
+  .no-print,
+  .btn-close,
+  .modal-header,
+  .modal-footer,
+  .receipt-top-actions,
+  .tabs-header-row,
+  .kpi-strip {
     display: none !important;
   }
+
+  /* When an app-modal contains a printable-area or is active during receipt print, isolate it */
+  body.printing-receipt .page-container,
+  body.printing-voucher .page-container,
+  body.printing-marksheet .page-container,
+  body:not(.printing-bulk-cards):has(app-modal .printable-area) .page-container {
+    display: none !important;
+  }
+
   body, .main-content {
     background: #ffffff !important;
     padding: 0 !important;
+    margin: 0 !important;
   }
+
+  app-modal {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+  }
+
+  app-modal .modal-backdrop {
+    position: static !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    overflow: visible !important;
+    z-index: auto !important;
+  }
+
+  app-modal .modal-container {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    animation: none !important;
+  }
+
+  app-modal .modal-header,
+  app-modal .modal-footer,
+  app-modal .btn-close {
+    display: none !important;
+  }
+
+  app-modal .modal-body {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+
   .printable-area {
     border: none !important;
     box-shadow: none !important;
     padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
   }
 }

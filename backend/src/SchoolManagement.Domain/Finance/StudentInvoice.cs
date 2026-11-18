@@ -2,8 +2,9 @@ using SchoolManagement.Domain.Common;
 
 namespace SchoolManagement.Domain.Finance;
 
-public class StudentInvoice : BaseEntity, ISchoolScopedEntity
+public class StudentInvoice : BaseEntity, ICampusScopedEntity
 {
+    public string BranchId { get; set; } = "br-01";
     public string SchoolId { get; set; } = "sch-01";
     public string InvoiceNo { get; set; } = string.Empty;
     public string StudentId { get; set; } = string.Empty;

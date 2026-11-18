@@ -2,11 +2,29 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { ToastService } from '../services/toast.service';
+import { CampusSessionService } from '../services/campus-session.service';
 
-export const permissionGuard: CanActivateFn = (route, state) => {
+export const permissionGuard: CanActivateFn = async (route, state) => {
   const auth = inject(AuthService);
   const router = inject(Router);
   const toast = inject(ToastService);
+  const campus = inject(CampusSessionService);
+
+  // Await authentication restoration before permission inspection
+  await auth.ready;
+
+  if (!auth.isAuthenticated()) {
+    router.navigate(['/login'], { queryParams: { returnUrl: state.url } });
+    return false;
+  }
+
+  if (!campus.branchId && !state.url.includes('/app/dashboard')) {
+    toast.info('Select a campus', 'Choose a campus on the dashboard to continue.');
+    return router.createUrlTree(['/app/dashboard']);
+  }
+  await auth.refreshMenuAccess(false);
+  // Dashboard remains the landing page when a role has no assigned screens.
+  if (state.url.split('?')[0] === '/app/dashboard') return true;
 
   const permissionCode = route.data['permissionCode'] as string;
   if (!permissionCode) {

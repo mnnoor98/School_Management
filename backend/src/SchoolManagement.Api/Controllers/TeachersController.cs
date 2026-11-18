@@ -1,9 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SchoolManagement.Application.Common.Interfaces;
 using SchoolManagement.Application.Common.Models;
-using SchoolManagement.Domain.Employee;
+using SchoolManagement.Application.Employee.DTOs;
+using SchoolManagement.Application.Employee.Services;
 
 namespace SchoolManagement.Api.Controllers;
 
@@ -12,59 +11,59 @@ namespace SchoolManagement.Api.Controllers;
 [Authorize]
 public class TeachersController : ControllerBase
 {
-    private readonly IApplicationDbContext _context;
+    private readonly ITeacherService _teacherService;
 
-    public TeachersController(IApplicationDbContext context)
+    public TeachersController(ITeacherService teacherService)
     {
-        _context = context;
+        _teacherService = teacherService;
     }
 
     [HttpGet]
     public async Task<ActionResult<ApiResponse<List<TeacherDto>>>> GetTeachers([FromQuery] string? search)
     {
-        var query = _context.Teachers.AsNoTracking().AsQueryable();
-
-        if (!string.IsNullOrEmpty(search))
-        {
-            search = search.Trim().ToLower();
-            query = query.Where(t => t.FullName.ToLower().Contains(search) || t.EmployeeCode.ToLower().Contains(search) || t.Department.ToLower().Contains(search));
-        }
-
-        var teachers = await query
-            .OrderBy(t => t.FullName)
-            .Select(t => new TeacherDto
-            {
-                Id = t.Id,
-                EmployeeCode = t.EmployeeCode,
-                FullName = t.FullName,
-                Designation = t.Designation,
-                Department = t.Department,
-                Qualification = t.Qualification,
-                Email = t.Email,
-                Phone = t.Phone,
-                JoiningDate = t.JoiningDate,
-                Status = t.Status,
-                Avatar = t.Avatar,
-                AssignedSubjects = new List<string> { "Higher Mathematics", "Physics" }
-            })
-            .ToListAsync();
-
+        var teachers = await _teacherService.GetTeachersAsync(search);
         return Ok(ApiResponse<List<TeacherDto>>.Ok(teachers));
     }
-}
 
-public class TeacherDto
-{
-    public string Id { get; set; } = string.Empty;
-    public string EmployeeCode { get; set; } = string.Empty;
-    public string FullName { get; set; } = string.Empty;
-    public string Designation { get; set; } = string.Empty;
-    public string Department { get; set; } = string.Empty;
-    public string Qualification { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string Phone { get; set; } = string.Empty;
-    public DateTime JoiningDate { get; set; }
-    public string Status { get; set; } = "Active";
-    public string Avatar { get; set; } = string.Empty;
-    public List<string> AssignedSubjects { get; set; } = new();
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ApiResponse<TeacherDto>>> GetTeacherById(string id)
+    {
+        var dto = await _teacherService.GetTeacherByIdAsync(id);
+        if (dto == null) return NotFound(ApiResponse<TeacherDto>.Fail("Teacher not found"));
+        return Ok(ApiResponse<TeacherDto>.Ok(dto));
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<ApiResponse<TeacherDto>>> CreateTeacher([FromBody] CreateTeacherRequest request)
+    {
+        var (teacher, error) = await _teacherService.CreateTeacherAsync(request);
+        if (!string.IsNullOrEmpty(error))
+        {
+            return BadRequest(ApiResponse<TeacherDto>.Fail(error));
+        }
+
+        return Ok(ApiResponse<TeacherDto>.Ok(teacher!, "Teacher profile created"));
+    }
+
+    [HttpPut("{id}")]
+    public async Task<ActionResult<ApiResponse<TeacherDto>>> UpdateTeacher(string id, [FromBody] UpdateTeacherRequest request)
+    {
+        var (teacher, error) = await _teacherService.UpdateTeacherAsync(id, request);
+        if (!string.IsNullOrEmpty(error))
+        {
+            return error == "Teacher not found" 
+                ? NotFound(ApiResponse<TeacherDto>.Fail(error)) 
+                : BadRequest(ApiResponse<TeacherDto>.Fail(error));
+        }
+
+        return Ok(ApiResponse<TeacherDto>.Ok(teacher!, "Teacher profile updated"));
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<ActionResult<ApiResponse<bool>>> DeleteTeacher(string id)
+    {
+        var deleted = await _teacherService.DeleteTeacherAsync(id);
+        if (!deleted) return NotFound(ApiResponse<bool>.Fail("Teacher not found"));
+        return Ok(ApiResponse<bool>.Ok(true, "Teacher deleted successfully"));
+    }
 }

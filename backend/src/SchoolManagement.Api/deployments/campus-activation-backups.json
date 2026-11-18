@@ -1,0 +1,8 @@
+{
+    "webBackup":  "G:\\dotnetproject\\School_management\\backend\\src\\SchoolManagement.Api\\deployments\\backups\\pre_campus_web_20261021_155814.zip",
+    "databaseBackup":  "G:\\dotnetproject\\School_management\\backend\\backups\\pre_campus_activation_20261021_155814.dump",
+    "binaryBackup":  "G:\\dotnetproject\\School_management\\backend\\src\\SchoolManagement.Api\\deployments\\backups\\pre_campus_api_20261021_155915.zip",
+    "activatedAtUtc":  "2026-10-21T16:05:16.0108023Z",
+    "verifiedFrontendBundle":  "main-UD4JOVRN.js",
+    "verifiedSuperAdminCampusSelection":  true
+}

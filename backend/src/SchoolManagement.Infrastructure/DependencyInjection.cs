@@ -4,9 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using SchoolManagement.Application;
 using SchoolManagement.Application.Common.Interfaces;
 using SchoolManagement.Infrastructure.Identity;
 using SchoolManagement.Infrastructure.Persistence;
+using SchoolManagement.Infrastructure.Services;
 
 namespace SchoolManagement.Infrastructure;
 
@@ -24,7 +26,17 @@ public static class DependencyInjection
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<CampusContext>();
+        services.AddScoped<ICampusContext>(provider => provider.GetRequiredService<CampusContext>());
         services.AddScoped<IPermissionService, PermissionEngine>();
+        services.AddScoped<IStudentAccessService, StudentAccessService>();
+        services.AddScoped<IExcelImportExportService, ExcelImportExportService>();
+        services.AddScoped<ISmsGatewayService, SmsGatewayService>();
+        services.AddMemoryCache();
+        services.AddScoped<ICampusCacheService, CampusCacheService>();
+
+        // Register Clean Architecture Application Services
+        services.AddApplicationServices();
 
         // Authentication & JWT
         var secretKey = configuration["Jwt:SecretKey"] ?? "SuperSecretKeyForSchoolManagementSystem2026!@#$";

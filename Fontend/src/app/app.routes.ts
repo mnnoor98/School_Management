@@ -76,18 +76,44 @@ export const routes: Routes = [
         canActivate: [permissionGuard],
         data: { permissionCode: 'ADMIN_AUDIT_VIEW' }
       },
+      {
+        path: 'admin/database-backup',
+        loadComponent: () =>
+          import('./features/administration/database-backup.component').then(m => m.DatabaseBackupComponent),
+        canActivate: [permissionGuard],
+        data: { permissionCode: 'ADMIN_BACKUP_VIEW' }
+      },
+      {
+        path: 'admin/deployment',
+        loadComponent: () =>
+          import('./features/administration/deployment-center.component').then(m => m.DeploymentCenterComponent),
+        canActivate: [permissionGuard],
+        data: { permissionCode: 'ADMIN_DEPLOYMENT_VIEW' }
+      },
+      {
+        path: 'admin/master-data',
+        loadComponent: () =>
+          import('./features/administration/master-data-management.component').then(m => m.MasterDataManagementComponent),
+        canActivate: [permissionGuard],
+        data: { permissionCode: 'ADMIN_MASTER_DATA' }
+      },
+      {
+        path: 'master-data',
+        redirectTo: 'admin/master-data',
+        pathMatch: 'full'
+      },
       // Academic
       {
         path: 'academic/classes',
         loadComponent: () =>
-          import('./features/academic/routine.component').then(m => m.RoutineComponent),
+          import('./features/academic/classes-management.component').then(m => m.ClassesManagementComponent),
         canActivate: [permissionGuard],
         data: { permissionCode: 'ACAD_CLASSES_VIEW' }
       },
       {
         path: 'academic/subjects',
         loadComponent: () =>
-          import('./features/academic/routine.component').then(m => m.RoutineComponent),
+          import('./features/academic/subjects-management.component').then(m => m.SubjectsManagementComponent),
         canActivate: [permissionGuard],
         data: { permissionCode: 'ACAD_SUBJECTS_VIEW' }
       },
@@ -116,7 +142,7 @@ export const routes: Routes = [
       {
         path: 'students/promotion',
         loadComponent: () =>
-          import('./features/students/student-list.component').then(m => m.StudentListComponent),
+          import('./features/students/student-promotion.component').then(m => m.StudentPromotionComponent),
         canActivate: [permissionGuard],
         data: { permissionCode: 'STUD_PROMOTION_VIEW' }
       },
@@ -131,7 +157,7 @@ export const routes: Routes = [
       {
         path: 'teachers/leave',
         loadComponent: () =>
-          import('./features/teachers/teachers.component').then(m => m.TeachersComponent),
+          import('./features/teachers/teacher-leave.component').then(m => m.TeacherLeaveComponent),
         canActivate: [permissionGuard],
         data: { permissionCode: 'TEACH_LEAVE_VIEW' }
       },
@@ -146,14 +172,14 @@ export const routes: Routes = [
       {
         path: 'attendance/correction',
         loadComponent: () =>
-          import('./features/attendance/attendance-entry.component').then(m => m.AttendanceEntryComponent),
+          import('./features/attendance/attendance-correction.component').then(m => m.AttendanceCorrectionComponent),
         canActivate: [permissionGuard],
         data: { permissionCode: 'ATT_CORRECTION_VIEW' }
       },
       {
         path: 'attendance/reports',
         loadComponent: () =>
-          import('./features/reports/reports.component').then(m => m.ReportsComponent),
+          import('./features/attendance/attendance-reports.component').then(m => m.AttendanceReportsComponent),
         canActivate: [permissionGuard],
         data: { permissionCode: 'ATT_REPORTS_VIEW' }
       },
@@ -161,14 +187,14 @@ export const routes: Routes = [
       {
         path: 'exams/setup',
         loadComponent: () =>
-          import('./features/exams/marksheet.component').then(m => m.MarksheetComponent),
+          import('./features/exams/exam-setup.component').then(m => m.ExamSetupComponent),
         canActivate: [permissionGuard],
         data: { permissionCode: 'EXAM_SETUP_VIEW' }
       },
       {
         path: 'exams/marks',
         loadComponent: () =>
-          import('./features/exams/marksheet.component').then(m => m.MarksheetComponent),
+          import('./features/exams/marks-entry.component').then(m => m.MarksEntryComponent),
         canActivate: [permissionGuard],
         data: { permissionCode: 'EXAM_MARKS_VIEW' }
       },
@@ -183,14 +209,14 @@ export const routes: Routes = [
       {
         path: 'finance/structure',
         loadComponent: () =>
-          import('./features/finance/fee-collection.component').then(m => m.FeeCollectionComponent),
+          import('./features/finance/fee-structure.component').then(m => m.FeeStructureComponent),
         canActivate: [permissionGuard],
         data: { permissionCode: 'FIN_STRUCTURE_VIEW' }
       },
       {
         path: 'finance/invoices',
         loadComponent: () =>
-          import('./features/finance/fee-collection.component').then(m => m.FeeCollectionComponent),
+          import('./features/finance/invoices-management.component').then(m => m.InvoicesManagementComponent),
         canActivate: [permissionGuard],
         data: { permissionCode: 'FIN_INVOICES_VIEW' }
       },
@@ -200,6 +226,27 @@ export const routes: Routes = [
           import('./features/finance/fee-collection.component').then(m => m.FeeCollectionComponent),
         canActivate: [permissionGuard],
         data: { permissionCode: 'FIN_COLLECTION_VIEW' }
+      },
+      {
+        path: 'finance/expenses',
+        loadComponent: () =>
+          import('./features/finance/expense-management.component').then(m => m.ExpenseManagementComponent),
+        canActivate: [permissionGuard],
+        data: { permissionCode: 'FIN_EXPENSES_VIEW' }
+      },
+      {
+        path: 'finance/payroll',
+        loadComponent: () =>
+          import('./features/finance/payroll-management.component').then(m => m.PayrollManagementComponent),
+        canActivate: [permissionGuard],
+        data: { permissionCode: 'FIN_PAYROLL_VIEW' }
+      },
+      {
+        path: 'finance/banking',
+        loadComponent: () =>
+          import('./features/finance/banking-treasury.component').then(m => m.BankingTreasuryComponent),
+        canActivate: [permissionGuard],
+        data: { permissionCode: 'FIN_BANKING_VIEW' }
       },
       // Communication
       {
@@ -212,23 +259,49 @@ export const routes: Routes = [
       {
         path: 'communication/sms',
         loadComponent: () =>
-          import('./features/communication/notices.component').then(m => m.NoticesComponent),
+          import('./features/communication/sms-management.component').then(m => m.SmsManagementComponent),
         canActivate: [permissionGuard],
         data: { permissionCode: 'COMM_SMS_VIEW' }
       },
       // Reports
       {
         path: 'reports',
+        redirectTo: 'reports/academic',
+        pathMatch: 'full'
+      },
+      {
+        path: 'reports/academic',
+        loadComponent: () =>
+          import('./features/reports/academic-performance-report.component').then(m => m.AcademicPerformanceReportComponent),
+        canActivate: [permissionGuard],
+        data: { permissionCode: 'REPORTS_VIEW' }
+      },
+      {
+        path: 'reports/financial',
+        loadComponent: () =>
+          import('./features/reports/financial-ledger-report.component').then(m => m.FinancialLedgerReportComponent),
+        canActivate: [permissionGuard],
+        data: { permissionCode: 'REPORTS_VIEW' }
+      },
+      {
+        path: 'reports/hub',
         loadComponent: () =>
           import('./features/reports/reports.component').then(m => m.ReportsComponent),
         canActivate: [permissionGuard],
         data: { permissionCode: 'REPORTS_VIEW' }
       },
+      {
+        path: 'reports/attendance',
+        loadComponent: () =>
+          import('./features/reports/reports.component').then(m => m.ReportsComponent),
+        canActivate: [permissionGuard],
+        data: { permissionCode: 'REPORTS_VIEW', defaultTab: 'attendance' }
+      },
       // Convenience redirects
       { path: 'students', redirectTo: 'students/list', pathMatch: 'full' },
       { path: 'academic', redirectTo: 'academic/routine', pathMatch: 'full' },
       { path: 'attendance', redirectTo: 'attendance/reports', pathMatch: 'full' },
-      { path: 'attendance/student', redirectTo: 'attendance/entry', pathMatch: 'full' },
+      { path: 'attendance/student', redirectTo: 'attendance/reports', pathMatch: 'full' },
       { path: 'attendance/report', redirectTo: 'attendance/reports', pathMatch: 'full' },
       { path: 'exams', redirectTo: 'exams/marksheet', pathMatch: 'full' },
       { path: 'exams/results', redirectTo: 'exams/marksheet', pathMatch: 'full' },
@@ -259,6 +332,26 @@ export const routes: Routes = [
   {
     path: 'finance',
     redirectTo: '/app/finance/collection',
+    pathMatch: 'prefix'
+  },
+  {
+    path: 'reports/academic',
+    redirectTo: '/app/reports/academic',
+    pathMatch: 'prefix'
+  },
+  {
+    path: 'reports/financial',
+    redirectTo: '/app/reports/financial',
+    pathMatch: 'prefix'
+  },
+  {
+    path: 'reports',
+    redirectTo: '/app/reports/academic',
+    pathMatch: 'prefix'
+  },
+  {
+    path: 'master-data',
+    redirectTo: '/app/admin/master-data',
     pathMatch: 'prefix'
   },
   {
