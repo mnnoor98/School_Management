@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
-import { Student, AdmissionLookups, LookupOption, DivisionLookup } from '../../models';
+import { Student, AdmissionLookups, LookupOption, DivisionLookup, CertificateType, GenerateCertificateRequest, CertificateDossier } from '../../models';
 import { CampusSessionService } from '../campus-session.service';
 import { environment } from '../../../../environments/environment';
 
@@ -461,5 +461,35 @@ export class StudentStoreService {
         }
       ]
     };
+  }
+
+  // --- Certificates & Testimonials ---
+  async getCertificateTypes(): Promise<CertificateType[]> {
+    try {
+      const res = await firstValueFrom(this.http.get<ApiResponse<CertificateType[]>>(`${this.API_BASE}/certificates/types`));
+      return res?.data || [];
+    } catch (e) {
+      console.warn('Error fetching certificate types:', e);
+      return [];
+    }
+  }
+
+  async generateCertificate(req: GenerateCertificateRequest): Promise<CertificateDossier> {
+    const res = await firstValueFrom(this.http.post<ApiResponse<CertificateDossier>>(`${this.API_BASE}/certificates/generate`, req));
+    if (!res?.success || !res.data) {
+      throw new Error(res?.message || 'Failed to generate certificate.');
+    }
+    return res.data;
+  }
+
+  async getIssuedCertificates(studentId?: string): Promise<CertificateDossier[]> {
+    const qs = studentId ? `?studentId=${encodeURIComponent(studentId)}` : '';
+    try {
+      const res = await firstValueFrom(this.http.get<ApiResponse<CertificateDossier[]>>(`${this.API_BASE}/certificates/issued${qs}`));
+      return res?.data || [];
+    } catch (e) {
+      console.warn('Error fetching issued certificates:', e);
+      return [];
+    }
   }
 }

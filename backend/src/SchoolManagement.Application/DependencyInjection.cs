@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SchoolManagement.Application.Academic.Services;
 using SchoolManagement.Application.Attendance.Services;
 using SchoolManagement.Application.Auth.Services;
+using SchoolManagement.Application.Certificates.Services;
 using SchoolManagement.Application.Employee.Services;
 using SchoolManagement.Application.Exams.Services;
 using SchoolManagement.Application.Finance.Services;
@@ -35,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<INoticeService, NoticeService>();
         services.AddScoped<IAuditLogService, AuditLogService>();
         services.AddScoped<ISmsService, SmsService>();
+        services.AddScoped<ICertificateService, CertificateService>();
 
         return services;
     }

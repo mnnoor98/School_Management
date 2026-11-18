@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
-import { Exam, ExamScheduleItem, ExamMark, StudentMarksheet, Student, Subject } from '../../models';
+import { Exam, ExamScheduleItem, ExamMark, StudentMarksheet, Student, Subject, AdmitCard } from '../../models';
 import { CampusSessionService } from '../campus-session.service';
 
 interface ApiResponse<T> {
@@ -426,5 +426,22 @@ export class ExamStoreService {
       await this.fetchExamMarks(examId, classId, sectionId, subjectId);
     }
     return res;
+  }
+
+  async loadAdmitCards(examId: string, classId?: string, sectionId?: string, studentId?: string): Promise<AdmitCard[]> {
+    let url = `${this.API_BASE}/exams/${examId}/admit-cards?`;
+    const params: string[] = [];
+    if (classId && classId !== 'ALL') params.push(`classId=${encodeURIComponent(classId)}`);
+    if (sectionId && sectionId !== 'ALL') params.push(`sectionId=${encodeURIComponent(sectionId)}`);
+    if (studentId) params.push(`studentId=${encodeURIComponent(studentId)}`);
+    url += params.join('&');
+
+    try {
+      const res = await firstValueFrom(this.http.get<ApiResponse<AdmitCard[]>>(url));
+      return res?.data || [];
+    } catch (e) {
+      console.warn('Error fetching admit cards from backend:', e);
+      return [];
+    }
   }
 }

@@ -91,3 +91,38 @@ public class ExamUpdateRequest
     public DateTime EndDate { get; set; }
     public bool IsPublished { get; set; }
 }
+
+public class AdmitCardDto
+{
+    public string SchoolName { get; set; } = string.Empty;
+    public string SchoolAddress { get; set; } = string.Empty;
+    public string CampusName { get; set; } = string.Empty;
+    public string BranchId { get; set; } = string.Empty;
+    public string ExamName { get; set; } = string.Empty;
+    public string Term { get; set; } = string.Empty;
+    public string AcademicYear { get; set; } = string.Empty;
+    public string StudentId { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string? BanglaName { get; set; }
+    public string AdmissionNo { get; set; } = string.Empty;
+    public string RollNo { get; set; } = string.Empty;
+    public string ClassName { get; set; } = string.Empty;
+    public string SectionName { get; set; } = string.Empty;
+    public string? Shift { get; set; }
+    public string? Avatar { get; set; }
+    public string? FatherName { get; set; }
+    public string? MotherName { get; set; }
+    public List<AdmitCardScheduleItemDto> Schedules { get; set; } = new();
+    public List<string> Instructions { get; set; } = new();
+    public string GeneratedAt { get; set; } = string.Empty;
+}
+
+public class AdmitCardScheduleItemDto
+{
+    public string SubjectCode { get; set; } = string.Empty;
+    public string SubjectName { get; set; } = string.Empty;
+    public string ExamDate { get; set; } = string.Empty;
+    public string Day { get; set; } = string.Empty;
+    public string TimeSlot { get; set; } = string.Empty;
+    public string RoomNo { get; set; } = string.Empty;
+}

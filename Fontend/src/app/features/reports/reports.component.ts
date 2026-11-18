@@ -4,6 +4,8 @@ import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { IconComponent } from '../../shared/components/icon.component';
 import { AcademicPerformanceReportComponent } from './academic-performance-report.component';
 import { FinancialLedgerReportComponent } from './financial-ledger-report.component';
+import { AdmitCardGeneratorComponent } from './admit-card-generator.component';
+import { CertificateGeneratorComponent } from './certificate-generator.component';
 
 @Component({
   selector: 'app-reports',
@@ -13,7 +15,9 @@ import { FinancialLedgerReportComponent } from './financial-ledger-report.compon
     RouterModule,
     IconComponent,
     AcademicPerformanceReportComponent,
-    FinancialLedgerReportComponent
+    FinancialLedgerReportComponent,
+    AdmitCardGeneratorComponent,
+    CertificateGeneratorComponent
   ],
   template: `
     <div class="reports-hub-wrapper">
@@ -29,6 +33,27 @@ import { FinancialLedgerReportComponent } from './financial-ledger-report.compon
             <app-icon name="award" [size]="18"></app-icon>
             <span>Academic Performance & Merit Matrix</span>
           </button>
+
+          <button
+            type="button"
+            class="hub-tab-btn"
+            [class.active]="activeTab === 'admit-card'"
+            (click)="switchTab('admit-card')"
+          >
+            <app-icon name="file-text" [size]="18"></app-icon>
+            <span>Examination Admit Cards (প্রবেশপত্র)</span>
+          </button>
+
+          <button
+            type="button"
+            class="hub-tab-btn"
+            [class.active]="activeTab === 'certificates'"
+            (click)="switchTab('certificates')"
+          >
+            <app-icon name="bookmark" [size]="18"></app-icon>
+            <span>Certificates & Testimonials (সনদপত্র)</span>
+          </button>
+
           <button
             type="button"
             class="hub-tab-btn"
@@ -46,7 +71,17 @@ import { FinancialLedgerReportComponent } from './financial-ledger-report.compon
         <app-academic-performance-report></app-academic-performance-report>
       </div>
 
-      <!-- TAB 2: FINANCIAL LEDGER REPORT -->
+      <!-- TAB 2: ADMIT CARD GENERATOR -->
+      <div *ngIf="activeTab === 'admit-card'">
+        <app-admit-card-generator></app-admit-card-generator>
+      </div>
+
+      <!-- TAB 3: CERTIFICATES GENERATOR -->
+      <div *ngIf="activeTab === 'certificates'">
+        <app-certificate-generator></app-certificate-generator>
+      </div>
+
+      <!-- TAB 4: FINANCIAL LEDGER REPORT -->
       <div *ngIf="activeTab === 'finance'">
         <app-financial-ledger-report></app-financial-ledger-report>
       </div>
@@ -98,35 +133,43 @@ export class ReportsComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
-  activeTab: 'academic' | 'finance' = 'academic';
+  activeTab: 'academic' | 'admit-card' | 'certificates' | 'finance' = 'academic';
 
   ngOnInit() {
     this.route.data.subscribe(data => {
-      if (data['defaultTab'] === 'finance' || data['defaultTab'] === 'financial') {
-        this.activeTab = 'finance';
-      } else if (data['defaultTab'] === 'academic' || data['defaultTab'] === 'exams') {
-        this.activeTab = 'academic';
+      if (data['defaultTab']) {
+        this.activeTab = data['defaultTab'];
       }
     });
 
     this.route.queryParams.subscribe(params => {
-      if (params['tab'] === 'finance' || params['tab'] === 'financial') {
-        this.activeTab = 'finance';
-      } else if (params['tab'] === 'academic' || params['tab'] === 'exams') {
-        this.activeTab = 'academic';
+      if (params['tab']) {
+        const t = params['tab'].toLowerCase();
+        if (t === 'admit-card' || t === 'admit' || t === 'admitcard') {
+          this.activeTab = 'admit-card';
+        } else if (t === 'certificates' || t === 'certificate' || t === 'tc') {
+          this.activeTab = 'certificates';
+        } else if (t === 'finance' || t === 'financial') {
+          this.activeTab = 'finance';
+        } else if (t === 'academic' || t === 'exams') {
+          this.activeTab = 'academic';
+        }
       }
     });
 
-    // Check URL path
-    const url = this.router.url;
-    if (url.includes('financial') || url.includes('finance')) {
+    const url = this.router.url.toLowerCase();
+    if (url.includes('admit-card') || url.includes('admit')) {
+      this.activeTab = 'admit-card';
+    } else if (url.includes('certificate') || url.includes('testimonial')) {
+      this.activeTab = 'certificates';
+    } else if (url.includes('financial') || url.includes('finance')) {
       this.activeTab = 'finance';
     } else if (url.includes('academic')) {
       this.activeTab = 'academic';
     }
   }
 
-  switchTab(tab: 'academic' | 'finance') {
+  switchTab(tab: 'academic' | 'admit-card' | 'certificates' | 'finance') {
     this.activeTab = tab;
   }
 }

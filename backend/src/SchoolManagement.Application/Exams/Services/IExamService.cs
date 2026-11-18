@@ -21,4 +21,6 @@ public interface IExamService
     Task<ExamScheduleItemDto?> GetScheduleByIdAsync(string id);
     Task<ExamScheduleItemDto> CreateScheduleAsync(CreateExamScheduleRequest req);
     Task<bool> DeleteScheduleAsync(string id);
+
+    Task<List<AdmitCardDto>> GetAdmitCardsAsync(string examId, string? classId, string? sectionId, string? studentId);
 }

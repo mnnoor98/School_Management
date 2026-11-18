@@ -284,6 +284,30 @@ export const routes: Routes = [
         data: { permissionCode: 'REPORTS_VIEW' }
       },
       {
+        path: 'reports/admit-card',
+        loadComponent: () =>
+          import('./features/reports/reports.component').then(m => m.ReportsComponent),
+        canActivate: [permissionGuard],
+        data: { permissionCode: 'REPORTS_VIEW', defaultTab: 'admit-card' }
+      },
+      {
+        path: 'reports/certificates',
+        loadComponent: () =>
+          import('./features/reports/reports.component').then(m => m.ReportsComponent),
+        canActivate: [permissionGuard],
+        data: { permissionCode: 'REPORTS_VIEW', defaultTab: 'certificates' }
+      },
+      {
+        path: 'exams/admit-card',
+        redirectTo: 'reports/admit-card',
+        pathMatch: 'full'
+      },
+      {
+        path: 'students/certificates',
+        redirectTo: 'reports/certificates',
+        pathMatch: 'full'
+      },
+      {
         path: 'reports/hub',
         loadComponent: () =>
           import('./features/reports/reports.component').then(m => m.ReportsComponent),

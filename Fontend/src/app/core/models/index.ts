@@ -815,6 +815,94 @@ export interface TreasurySummary {
   pendingPettyCashCount: number;
 }
 
+export interface AdmitCardScheduleItem {
+  subjectCode: string;
+  subjectName: string;
+  examDate: string;
+  day: string;
+  timeSlot: string;
+  roomNo: string;
+}
+
+export interface AdmitCard {
+  schoolName: string;
+  schoolAddress: string;
+  campusName: string;
+  branchId: string;
+  examName: string;
+  term: string;
+  academicYear: string;
+  studentId: string;
+  fullName: string;
+  banglaName?: string;
+  admissionNo: string;
+  rollNo: string;
+  className: string;
+  sectionName: string;
+  shift?: string;
+  avatar?: string;
+  fatherName?: string;
+  motherName?: string;
+  schedules: AdmitCardScheduleItem[];
+  instructions: string[];
+  generatedAt: string;
+}
+
+export interface CertificateType {
+  code: string;
+  titleEnglish: string;
+  titleBangla: string;
+  description: string;
+}
+
+export interface GenerateCertificateRequest {
+  studentId: string;
+  certificateType: string;
+  referenceNo?: string;
+  issueDate?: string;
+  conduct?: string;
+  reasonForLeaving?: string;
+  examPassed?: string;
+  gpaOrMarks?: string;
+  customRemarks?: string;
+}
+
+export interface CertificateDossier {
+  certificateNo: string;
+  certificateType: string;
+  typeTitleEnglish: string;
+  typeTitleBangla: string;
+  issueDate: string;
+  schoolName: string;
+  schoolAddress: string;
+  campusName: string;
+  eiinNo: string;
+  affiliation: string;
+  studentId: string;
+  fullName: string;
+  banglaName?: string;
+  admissionNo: string;
+  rollNo: string;
+  className: string;
+  sectionName: string;
+  academicSession: string;
+  dateOfBirth?: string;
+  fatherName?: string;
+  motherName?: string;
+  address?: string;
+  avatar?: string;
+  conduct: string;
+  reasonForLeaving?: string;
+  examPassed?: string;
+  gpaOrMarks?: string;
+  customRemarks?: string;
+  paragraphEnglish: string;
+  paragraphBangla: string;
+  securityVerificationCode: string;
+  signatoryHeadTitle: string;
+  signatoryTeacherTitle: string;
+}
+
 
 
 
