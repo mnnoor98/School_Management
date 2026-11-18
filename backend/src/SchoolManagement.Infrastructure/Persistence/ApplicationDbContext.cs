@@ -68,8 +68,11 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             {
                 if (entry.State == EntityState.Added)
                 {
-                    academicYear.SchoolId = ScopeSchool;
-                    if (string.IsNullOrEmpty(academicYear.BranchId))
+                    if (string.IsNullOrEmpty(academicYear.SchoolId))
+                    {
+                        academicYear.SchoolId = ScopeSchool;
+                    }
+                    if (string.IsNullOrEmpty(academicYear.BranchId) || (!BypassIsolation && !string.IsNullOrEmpty(ScopeBranch)))
                     {
                         academicYear.BranchId = !string.IsNullOrEmpty(ScopeBranch) ? ScopeBranch : "br-01";
                     }

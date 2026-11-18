@@ -9,10 +9,12 @@ namespace SchoolManagement.Application.School.Services;
 public class SchoolService : ISchoolService
 {
     private readonly IApplicationDbContext _context;
+    private readonly ICampusContext _campusContext;
 
-    public SchoolService(IApplicationDbContext context)
+    public SchoolService(IApplicationDbContext context, ICampusContext campusContext)
     {
         _context = context;
+        _campusContext = campusContext;
     }
 
     public async Task<(SchoolEntity? School, List<Branch> Branches, List<AcademicYear> AcademicYears)> GetSchoolProfileAsync()
@@ -178,7 +180,8 @@ public class SchoolService : ISchoolService
     public async Task<AcademicYear> AddAcademicYearAsync(AcademicYearCreateRequest request)
     {
         var school = await _context.Schools.FirstOrDefaultAsync();
-        var schoolId = school?.Id ?? "sch-01";
+        var schoolId = !string.IsNullOrEmpty(_campusContext?.SchoolId) ? _campusContext.SchoolId : (school?.Id ?? "sch-01");
+        var branchId = !string.IsNullOrEmpty(_campusContext?.BranchId) ? _campusContext.BranchId : "br-01";
 
         if (request.IsCurrent)
         {
@@ -190,6 +193,7 @@ public class SchoolService : ISchoolService
         {
             Id = "ay-" + Guid.NewGuid().ToString("N").Substring(0, 6),
             SchoolId = schoolId,
+            BranchId = branchId,
             Name = request.Name,
             StartDate = DateTime.SpecifyKind(request.StartDate, DateTimeKind.Utc),
             EndDate = DateTime.SpecifyKind(request.EndDate, DateTimeKind.Utc),

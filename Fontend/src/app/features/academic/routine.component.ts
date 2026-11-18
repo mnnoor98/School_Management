@@ -2053,7 +2053,7 @@ export class RoutineComponent implements OnInit {
         this.activeStructure = JSON.parse(saved);
         return;
       }
-    } catch {}
+    } catch { }
 
     // Fallback to Tier Default
     this.activeStructure = this.getTierDefaultStructure(tier);
@@ -2158,7 +2158,7 @@ export class RoutineComponent implements OnInit {
         const cls = this.classes.find(c => c.id === this.selectedClassId);
         if (cls) cls.tier = this.activeStructure.tier;
       }
-    } catch {}
+    } catch { }
 
     this.toast.success(
       'Schedule Structure Saved',
@@ -2614,16 +2614,16 @@ export class RoutineComponent implements OnInit {
     if (tier === 'pre-primary') {
       const curSubjects = this.classMatrixSubjects.length > 0
         ? this.classMatrixSubjects.map((sub, idx) => ({
-            name: sub.name,
-            teacher: this.teachers[idx % this.teachers.length] || this.teachers[0],
-            room: designatedRoom
-          }))
+          name: sub.name,
+          teacher: this.teachers[idx % this.teachers.length] || this.teachers[0],
+          room: designatedRoom
+        }))
         : [
-            { name: 'English Rhymes & Phonics', teacher: this.teachers[0], room: designatedRoom },
-            { name: 'Basic Numeracy & Shapes', teacher: this.teachers[1] || this.teachers[0], room: designatedRoom },
-            { name: 'Bangla Bornomala & Stories', teacher: this.teachers[2] || this.teachers[0], room: designatedRoom },
-            { name: 'Arts, Crafts & Coloring', teacher: this.teachers[3] || this.teachers[0], room: 'Activity Hall' }
-          ];
+          { name: 'English Rhymes & Phonics', teacher: this.teachers[0], room: designatedRoom },
+          { name: 'Basic Numeracy & Shapes', teacher: this.teachers[1] || this.teachers[0], room: designatedRoom },
+          { name: 'Bangla Bornomala & Stories', teacher: this.teachers[2] || this.teachers[0], room: designatedRoom },
+          { name: 'Arts, Crafts & Coloring', teacher: this.teachers[3] || this.teachers[0], room: 'Activity Hall' }
+        ];
 
       for (const day of this.days) {
         for (let pIdx = 0; pIdx < Math.min(4, this.activeStructure.periods.length); pIdx++) {
@@ -2651,19 +2651,19 @@ export class RoutineComponent implements OnInit {
     } else if (tier === 'secondary') {
       const curSubjects = this.classMatrixSubjects.length > 0
         ? this.classMatrixSubjects.map((sub, idx) => ({
-            name: sub.name,
-            teacher: this.teachers[idx % this.teachers.length] || this.teachers[0],
-            room: sub.name.toLowerCase().includes('lab') || sub.name.toLowerCase().includes('science') || sub.name.toLowerCase().includes('physics') || sub.name.toLowerCase().includes('chem') ? 'Science Lab' : (sub.name.toLowerCase().includes('ict') ? 'Computer Lab' : designatedRoom)
-          }))
+          name: sub.name,
+          teacher: this.teachers[idx % this.teachers.length] || this.teachers[0],
+          room: sub.name.toLowerCase().includes('lab') || sub.name.toLowerCase().includes('science') || sub.name.toLowerCase().includes('physics') || sub.name.toLowerCase().includes('chem') ? 'Science Lab' : (sub.name.toLowerCase().includes('ict') ? 'Computer Lab' : designatedRoom)
+        }))
         : [
-            { name: 'General / Higher Mathematics', teacher: this.teachers[0], room: designatedRoom },
-            { name: 'Physics / Physical Science', teacher: this.teachers[1] || this.teachers[0], room: 'Science Lab' },
-            { name: 'English 1st & 2nd Paper', teacher: this.teachers[2] || this.teachers[0], room: designatedRoom },
-            { name: 'Information & Comm. Tech (ICT)', teacher: this.teachers[3] || this.teachers[0], room: 'Computer Lab' },
-            { name: 'Bangla 1st & 2nd Paper', teacher: this.teachers[4] || this.teachers[0], room: designatedRoom },
-            { name: 'Bangladesh & Global Studies', teacher: this.teachers[5] || this.teachers[0], room: designatedRoom },
-            { name: 'Chemistry & Biology Lab', teacher: this.teachers[1] || this.teachers[0], room: 'Bio Lab' }
-          ];
+          { name: 'General / Higher Mathematics', teacher: this.teachers[0], room: designatedRoom },
+          { name: 'Physics / Physical Science', teacher: this.teachers[1] || this.teachers[0], room: 'Science Lab' },
+          { name: 'English 1st & 2nd Paper', teacher: this.teachers[2] || this.teachers[0], room: designatedRoom },
+          { name: 'Information & Comm. Tech (ICT)', teacher: this.teachers[3] || this.teachers[0], room: 'Computer Lab' },
+          { name: 'Bangla 1st & 2nd Paper', teacher: this.teachers[4] || this.teachers[0], room: designatedRoom },
+          { name: 'Bangladesh & Global Studies', teacher: this.teachers[5] || this.teachers[0], room: designatedRoom },
+          { name: 'Chemistry & Biology Lab', teacher: this.teachers[1] || this.teachers[0], room: 'Bio Lab' }
+        ];
 
       for (const day of this.days) {
         for (let pIdx = 0; pIdx < Math.min(7, this.activeStructure.periods.length); pIdx++) {
@@ -2692,18 +2692,18 @@ export class RoutineComponent implements OnInit {
       // Primary Tier (Class 1 to 5)
       const curSubjects = this.classMatrixSubjects.length > 0
         ? this.classMatrixSubjects.map((sub, idx) => ({
-            name: sub.name,
-            teacher: this.teachers[idx % this.teachers.length] || this.teachers[0],
-            room: designatedRoom
-          }))
+          name: sub.name,
+          teacher: this.teachers[idx % this.teachers.length] || this.teachers[0],
+          room: designatedRoom
+        }))
         : [
-            { name: 'Primary Mathematics', teacher: this.teachers[0], room: designatedRoom },
-            { name: 'English First Paper', teacher: this.teachers[1] || this.teachers[0], room: designatedRoom },
-            { name: 'Bangla Sahitya', teacher: this.teachers[2] || this.teachers[0], room: designatedRoom },
-            { name: 'General Science', teacher: this.teachers[3] || this.teachers[0], room: designatedRoom },
-            { name: 'Bangladesh & Global Studies', teacher: this.teachers[4] || this.teachers[0], room: designatedRoom },
-            { name: 'Religious & Moral Studies', teacher: this.teachers[5] || this.teachers[0], room: designatedRoom }
-          ];
+          { name: 'Primary Mathematics', teacher: this.teachers[0], room: designatedRoom },
+          { name: 'English First Paper', teacher: this.teachers[1] || this.teachers[0], room: designatedRoom },
+          { name: 'Bangla Sahitya', teacher: this.teachers[2] || this.teachers[0], room: designatedRoom },
+          { name: 'General Science', teacher: this.teachers[3] || this.teachers[0], room: designatedRoom },
+          { name: 'Bangladesh & Global Studies', teacher: this.teachers[4] || this.teachers[0], room: designatedRoom },
+          { name: 'Religious & Moral Studies', teacher: this.teachers[5] || this.teachers[0], room: designatedRoom }
+        ];
 
       for (const day of this.days) {
         for (let pIdx = 0; pIdx < Math.min(6, this.activeStructure.periods.length); pIdx++) {
