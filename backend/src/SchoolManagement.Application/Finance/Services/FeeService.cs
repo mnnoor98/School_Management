@@ -144,7 +144,6 @@ public class FeeService : IFeeService
         var feeType = new FeeType
         {
             Id = "ft-" + Guid.NewGuid().ToString("N")[..8],
-            SchoolId = "sch-01",
             Name = request.Name.Trim(),
             Code = code,
             Frequency = string.IsNullOrWhiteSpace(request.Frequency) ? "Monthly" : request.Frequency,
@@ -244,7 +243,8 @@ public class FeeService : IFeeService
         var structure = new FeeStructure
         {
             Id = "fs-" + Guid.NewGuid().ToString("N")[..8],
-            SchoolId = "sch-01",
+            SchoolId = schoolClass.SchoolId,
+            BranchId = schoolClass.BranchId,
             AcademicYearId = request.AcademicYearId,
             ClassId = schoolClass.Id,
             ClassName = schoolClass.Name,
@@ -361,12 +361,13 @@ public class FeeService : IFeeService
             }
 
             decimal amount = structures.TryGetValue(student.ClassId, out var feeAmt) && feeAmt > 0 ? feeAmt : 2500m;
-            string invNumber = $"INV-{request.DueDate:yyyyMM}-{++seedCounter:D4}";
+            string invNumber = $"INV-{request.DueDate:yyyyMM}-{Guid.NewGuid().ToString("N")[..6].ToUpper()}";
 
             var invoice = new StudentInvoice
             {
                 Id = "inv-" + Guid.NewGuid().ToString("N")[..8],
-                SchoolId = "sch-01",
+                BranchId = student.BranchId,
+                SchoolId = student.SchoolId,
                 InvoiceNo = invNumber,
                 StudentId = student.Id,
                 StudentName = student.FullName,

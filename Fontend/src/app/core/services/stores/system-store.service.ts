@@ -23,18 +23,17 @@ export class SystemStoreService {
   private auditLogs$ = new BehaviorSubject<AuditLog[]>([]);
   private smsLogs$ = new BehaviorSubject<SmsDispatchLog[]>([]);
 
-  private readonly defaultSchool: School = {
-    id: 'sch-01',
-    name: 'Ideal Model School & College',
-    code: 'IMSC',
-    address: 'Dhanmondi, Dhaka-1205',
-    contact: '+880 1712-345678',
-    email: 'info@idealmodel.edu.bd',
-    logo: '',
-    website: 'https://idealmodel.edu.bd',
+  private school$ = new BehaviorSubject<School>({
+    id: '',
+    name: 'Scholars International Academy',
+    code: 'DMSC-101',
+    address: 'Plot 14, Road 2, Block-E, Dhaka',
+    contact: '+880 1711-000000',
+    email: 'info@scholarsacademy.edu.bd',
+    logo: 'assets/images/logo.png',
+    website: 'https://scholarsacademy.edu.bd',
     status: 'Active'
-  };
-  private school$ = new BehaviorSubject<School>(this.defaultSchool);
+  });
 
   getNotices$() { return this.notices$.asObservable(); }
   getAuditLogs$() { return this.auditLogs$.asObservable(); }
@@ -53,10 +52,11 @@ export class SystemStoreService {
 
   async loadSchool(): Promise<School> {
     try {
-      const res = await firstValueFrom(this.http.get<ApiResponse<School>>(`${this.API_BASE}/School`));
+      const res = await firstValueFrom(this.http.get<ApiResponse<any>>(`${this.API_BASE}/School`));
       if (res?.success && res.data) {
-        this.school$.next(res.data);
-        return res.data;
+        const schoolObj = res.data.school || res.data;
+        this.school$.next(schoolObj);
+        return schoolObj;
       }
     } catch (e) {
       console.warn('SystemStore loadSchool error:', e);
@@ -193,32 +193,7 @@ export class SystemStoreService {
     this.smsLogs$.next(updated);
   }
 
-  private smsTemplates$ = new BehaviorSubject<SmsTemplate[]>([
-    {
-      id: 'tpl-1',
-      title: 'Fee Payment Due Reminder',
-      category: 'Fee',
-      content: 'Dear Guardian, the tuition fee for {StudentName} (Roll #{RollNo}) of Tk {DueAmount} is due on 25th of this month. Please clear the dues to avoid late penalty. — {SchoolName}'
-    },
-    {
-      id: 'tpl-2',
-      title: 'Student Absence Alert',
-      category: 'Attendance',
-      content: 'Alert: Your ward {StudentName} (Roll #{RollNo}) was marked ABSENT today without prior leave notice. Please contact the class teacher. — {SchoolName}'
-    },
-    {
-      id: 'tpl-3',
-      title: 'Exam Routine & Admit Card Notice',
-      category: 'Exam',
-      content: 'Dear Guardian, Term Final Examination will commence from next week. Please collect the Admit Card after clearing all outstanding school dues. — {SchoolName}'
-    },
-    {
-      id: 'tpl-4',
-      title: 'Emergency School Closure Notice',
-      category: 'Emergency',
-      content: 'Important: School activities will remain suspended tomorrow due to inclement weather conditions. Normal classes will resume on the next working day. — {SchoolName}'
-    }
-  ]);
+  private smsTemplates$ = new BehaviorSubject<SmsTemplate[]>([]);
 
   getSmsTemplates$() { return this.smsTemplates$.asObservable(); }
   getSmsTemplates(): SmsTemplate[] { return this.smsTemplates$.value; }
@@ -226,7 +201,7 @@ export class SystemStoreService {
   async loadSmsTemplates(): Promise<SmsTemplate[]> {
     try {
       const res = await firstValueFrom(this.http.get<ApiResponse<SmsTemplate[]>>(`${this.API_BASE}/sms/templates`));
-      if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+      if (res?.success && Array.isArray(res.data)) {
         this.smsTemplates$.next(res.data);
         return res.data;
       }

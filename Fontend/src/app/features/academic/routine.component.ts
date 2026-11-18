@@ -204,7 +204,7 @@ export interface RoutineStructureConfig {
             <div class="custom-select-wrap">
               <select class="control-select" [(ngModel)]="selectedSectionId" (change)="onSectionChange()">
                 <option *ngFor="let s of sections" [value]="s.id">{{ s.name }}</option>
-                <option *ngIf="sections.length === 0" value="sec-a">Section A</option>
+                <option *ngIf="sections.length === 0" value="">-- No Sections Configured --</option>
               </select>
               <span class="select-caret">▾</span>
             </div>
@@ -1866,8 +1866,11 @@ export class RoutineComponent implements OnInit {
       this.canManageRoutine = this.auth.hasPermission('ACAD_ROUTINE', 'create') || !this.isStudent;
     });
 
-    // 2. Load Classes from DB / Store
-    this.academicStore.loadClasses().then(() => {
+    // 2. Load Classes & Sections from DB / Store
+    Promise.all([
+      this.academicStore.loadClasses(),
+      this.academicStore.loadSections()
+    ]).then(() => {
       this.classes = this.academicStore.getClasses();
       if (this.classes.length > 0 && !this.classes.some(c => c.id === this.selectedClassId)) {
         this.selectedClassId = this.classes[0].id;
@@ -1907,6 +1910,14 @@ export class RoutineComponent implements OnInit {
         }
         this.onClassChange();
       }
+    });
+
+    this.academicStore.getSections$().subscribe(() => {
+      this.sections = this.academicStore.getSections(this.selectedClassId);
+      if (this.sections.length > 0 && !this.sections.some(s => s.id === this.selectedSectionId)) {
+        this.selectedSectionId = this.sections[0].id;
+      }
+      this.cdr.markForCheck();
     });
 
     this.academicStore.getSubjects$().subscribe(subList => {

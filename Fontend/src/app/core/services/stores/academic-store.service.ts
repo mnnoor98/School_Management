@@ -19,33 +19,6 @@ export class AcademicStoreService {
   private campus = inject(CampusSessionService);
   private readonly API_BASE = '/api/v1';
 
-  private readonly defaultClasses: SchoolClass[] = [
-    { id: 'cls-01', name: 'Play', code: 'CLS-01', sortOrder: 1, sectionCount: 2, studentCount: 60, isActive: true },
-    { id: 'cls-02', name: 'Narsari', code: 'CLS-02', sortOrder: 2, sectionCount: 2, studentCount: 60, isActive: true },
-    { id: 'cls-03', name: 'One', code: 'CLS-03', sortOrder: 3, sectionCount: 2, studentCount: 60, isActive: true },
-    { id: 'cls-04', name: 'Two', code: 'CLS-04', sortOrder: 4, sectionCount: 2, studentCount: 60, isActive: true },
-    { id: 'cls-05', name: 'Three', code: 'CLS-05', sortOrder: 5, sectionCount: 2, studentCount: 60, isActive: true },
-    { id: 'cls-06', name: 'Four', code: 'CLS-06', sortOrder: 6, sectionCount: 2, studentCount: 60, isActive: true },
-    { id: 'cls-07', name: 'Five', code: 'CLS-07', sortOrder: 7, sectionCount: 2, studentCount: 60, isActive: true }
-  ];
-
-  private readonly defaultSections: Section[] = [
-    { id: 'sec-01a', classId: 'cls-01', className: 'Play', name: 'Section A (Morning)', capacity: 30, currentStudentCount: 30, classTeacherId: 'tch-002', classTeacherName: 'Kaniz Fatema' },
-    { id: 'sec-01b', classId: 'cls-01', className: 'Play', name: 'Section B (Day)', capacity: 30, currentStudentCount: 30, classTeacherId: 'tch-002', classTeacherName: 'Kaniz Fatema' },
-    { id: 'sec-02a', classId: 'cls-02', className: 'Narsari', name: 'Section A (Rose)', capacity: 30, currentStudentCount: 30, classTeacherId: 'tch-003', classTeacherName: 'Rukhsana Akter' },
-    { id: 'sec-02b', classId: 'cls-02', className: 'Narsari', name: 'Section B (Tulip)', capacity: 30, currentStudentCount: 30, classTeacherId: 'tch-003', classTeacherName: 'Rukhsana Akter' },
-    { id: 'sec-03a', classId: 'cls-03', className: 'One', name: 'Section A', capacity: 30, currentStudentCount: 30, classTeacherId: 'tch-004', classTeacherName: 'Mizanur Rahman' },
-    { id: 'sec-03b', classId: 'cls-03', className: 'One', name: 'Section B', capacity: 30, currentStudentCount: 30, classTeacherId: 'tch-004', classTeacherName: 'Mizanur Rahman' },
-    { id: 'sec-04a', classId: 'cls-04', className: 'Two', name: 'Section A', capacity: 30, currentStudentCount: 30, classTeacherId: 'tch-005', classTeacherName: 'Shahidul Islam' },
-    { id: 'sec-04b', classId: 'cls-04', className: 'Two', name: 'Section B', capacity: 30, currentStudentCount: 30, classTeacherId: 'tch-005', classTeacherName: 'Shahidul Islam' },
-    { id: 'sec-05a', classId: 'cls-05', className: 'Three', name: 'Section A', capacity: 30, currentStudentCount: 30, classTeacherId: 'tch-006', classTeacherName: 'Jannatul Ferdous' },
-    { id: 'sec-05b', classId: 'cls-05', className: 'Three', name: 'Section B', capacity: 30, currentStudentCount: 30, classTeacherId: 'tch-006', classTeacherName: 'Jannatul Ferdous' },
-    { id: 'sec-06a', classId: 'cls-06', className: 'Four', name: 'Section A', capacity: 30, currentStudentCount: 30, classTeacherId: 'tch-007', classTeacherName: 'Hasan Mahmud' },
-    { id: 'sec-06b', classId: 'cls-06', className: 'Four', name: 'Section B', capacity: 30, currentStudentCount: 30, classTeacherId: 'tch-007', classTeacherName: 'Hasan Mahmud' },
-    { id: 'sec-07a', classId: 'cls-07', className: 'Five', name: 'Section A', capacity: 30, currentStudentCount: 30, classTeacherId: 'tch-008', classTeacherName: 'Farzana Haque' },
-    { id: 'sec-07b', classId: 'cls-07', className: 'Five', name: 'Section B', capacity: 30, currentStudentCount: 30, classTeacherId: 'tch-008', classTeacherName: 'Farzana Haque' }
-  ];
-
   private loadStorage<T>(key: string, fallback: T): T {
     try {
       const data = localStorage.getItem(`sms_${this.campus.branchId || 'global'}_${key}`);
@@ -61,8 +34,8 @@ export class AcademicStoreService {
     } catch {}
   }
 
-  private classes$ = new BehaviorSubject<SchoolClass[]>(this.loadStorage('academic_classes', this.defaultClasses));
-  private sections$ = new BehaviorSubject<Section[]>(this.loadStorage('academic_sections', this.defaultSections));
+  private classes$ = new BehaviorSubject<SchoolClass[]>(this.loadStorage('academic_classes', []));
+  private sections$ = new BehaviorSubject<Section[]>(this.loadStorage('academic_sections', []));
   private subjects$ = new BehaviorSubject<Subject[]>(this.loadStorage('academic_subjects', []));
   private routine$ = new BehaviorSubject<RoutinePeriod[]>(this.loadStorage('academic_routine', []));
   private academicYears$ = new BehaviorSubject<AcademicYear[]>(this.loadStorage('academic_years', []));
@@ -116,35 +89,12 @@ export class AcademicStoreService {
   async loadClasses(): Promise<SchoolClass[]> {
     try {
       const res = await firstValueFrom(this.http.get<ApiResponse<SchoolClass[]>>(`${this.API_BASE}/classes`));
-      const backendClasses = (res?.success && res.data) ? res.data : [];
-      const current = this.classes$.value;
-      const mergedMap = new Map<string, SchoolClass>();
-
-      // Base default classes
-      for (const def of this.defaultClasses) {
-        mergedMap.set(def.code.toLowerCase(), { ...def });
+      if (res?.success && Array.isArray(res.data)) {
+        const sorted = res.data.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+        this.classes$.next(sorted);
+        this.saveStorage('academic_classes', sorted);
+        return sorted;
       }
-
-      // Merge local storage state
-      for (const cur of current) {
-        mergedMap.set(cur.code.toLowerCase(), { ...cur });
-      }
-
-      // Merge backend classes
-      for (const item of backendClasses) {
-        const key = item.code.toLowerCase();
-        const existing = mergedMap.get(key);
-        mergedMap.set(key, {
-          ...existing,
-          ...item,
-          isActive: item.isActive !== undefined ? item.isActive : (existing?.isActive !== false)
-        });
-      }
-
-      const merged = Array.from(mergedMap.values()).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-      this.classes$.next(merged);
-      this.saveStorage('academic_classes', merged);
-      return merged;
     } catch (e) {
       console.warn('AcademicStore loadClasses error:', e);
     }
@@ -236,25 +186,11 @@ export class AcademicStoreService {
   async loadSections(): Promise<Section[]> {
     try {
       const res = await firstValueFrom(this.http.get<ApiResponse<Section[]>>(`${this.API_BASE}/sections`));
-      const backendSections = (res?.success && res.data) ? res.data : [];
-      const current = this.sections$.value;
-      const mergedMap = new Map<string, Section>();
-
-      for (const def of this.defaultSections) {
-        mergedMap.set(def.id, { ...def });
+      if (res?.success && Array.isArray(res.data)) {
+        this.sections$.next(res.data);
+        this.saveStorage('academic_sections', res.data);
+        return res.data;
       }
-      for (const cur of current) {
-        mergedMap.set(cur.id, { ...cur });
-      }
-      for (const item of backendSections) {
-        const existing = mergedMap.get(item.id);
-        mergedMap.set(item.id, { ...existing, ...item });
-      }
-
-      const merged = Array.from(mergedMap.values());
-      this.sections$.next(merged);
-      this.saveStorage('academic_sections', merged);
-      return merged;
     } catch (e) {
       console.warn('AcademicStore loadSections error:', e);
     }
