@@ -1,24 +1,61 @@
-# School Management System (DMSC-101 Academic Portal)
+# Enterprise Multi-Campus School Management ERP
 
-A comprehensive, enterprise-grade multi-campus School Management System built with **.NET 8 Clean Architecture**, **PostgreSQL**, and **Angular 18/22**.
+A complete, enterprise-grade multi-campus institutional School Management System built with **.NET 8 Clean Architecture**, **PostgreSQL**, and **Angular 17/18 Standalone Architecture**.
+
+Designed for complete institutional operations with **Zero Mock Data** and **Zero Hardcoded Select Dropdowns** — every single select list, teacher scale, student record, academic routine period, fee invoice, and examination mark is dynamically loaded and persisted directly in **PostgreSQL**.
 
 ---
 
-## 🚀 Key Features
+## 🏛️ Multi-Campus Architecture & Tenancy Isolation
 
-- **Multi-Campus Data Isolation:** Strict campus isolation powered by `ICampusScopedEntity` and EF Core global query filters.
-- **Dynamic Role-Based Access Control (RBAC):** Granular 4-tier permission engine supporting Super Admin, Principal, Teachers, Accountants, Guardians, and Students.
-- **Institutional & Guardian Portals:** Executive leadership dashboard and dedicated Parent/Guardian portal for academic tracking, schedule, and fee settlement.
-- **Student Lifecycle & Directory:** Admission processing, student dossier, roll management, section assignments, and promotions.
-- **Academic Engine:** Class & Section management, Subject catalog, Timetable / Class Routine generator with conflict detection.
-- **Attendance Engine:** Daily student/faculty attendance marking, absence tracking, and correction audit trail.
-- **Examination & Result Processing:** Exam terms, schedules, marks entry, GPA / Letter Grade calculation, and printable official student progress report cards.
-- **Bulk Excel Import/Export Engine:** ClosedXML-powered automated Excel template generation and bulk student admissions & term-end exam marks upload with cell validations.
-- **Automated SMS Gateway:** Real-time SMS dispatch via Greenweb/Teletalk adapters for automated absence alerts to guardians and instant money receipts upon fee payment.
-- **Finance & Multi-Channel Payments:** Fee structure setup, batch invoices, counter cashier collection, bKash / Nagad online payment gateway checkout, and daily multi-channel cashier closing reconciliation report.
-- **Multi-Tenant In-Memory Caching:** High-speed, campus-scoped in-memory cache layer (`ICampusCacheService`) with automated cache eviction on mutations for academic metadata and fee structures.
-- **Staff Leave & SMS Dispatch:** Teacher leave application review workflow and SMS broadcast logs.
-- **Modular Frontend Architecture:** Decoupled into 7 domain feature state stores (`AcademicStore`, `StudentStore`, `TeacherStore`, `AttendanceStore`, `FinanceStore`, `ExamStore`, `SystemStore`).
+The system supports seamless multi-campus operations with strict database-level tenancy isolation enforced through `ICampusScopedEntity`, `CampusScopeMiddleware`, and EF Core Global Query Filters.
+
+### Active Seeded Campuses
+| Campus ID | Campus Name | Location | Seeded Classes | Faculty Members | Enrolled Students |
+| :--- | :--- | :--- | :---: | :---: | :---: |
+| `br-01` | **Main Campus** | Plot 14, Road 2, Block-E, Dhaka | 11 Classes | 6 Teachers | 12 Students |
+| `br-8996de` | **BR-02 Uttara Campus** | Sector 4, Uttara, Dhaka | 10 Classes | 4 Teachers | Active |
+| `br-6fd98e` | **BR-03 Rayerbag Campus** | Rayerbag, Kadamtali, Dhaka | 12 Classes | 4 Teachers | Active |
+| `br-02c70f` | **BR-04 Dhanmondi Campus** | Road 8/A, Dhanmondi, Dhaka | 10 Classes | 4 Teachers | 13 Students |
+
+---
+
+## 🚀 Key Modules & Functional Engines
+
+### 1. Zero Mock Data & Dynamic Database Hydration
+- **Complete Cleanup:** Permanently purged legacy mock storage (`mock-db.service.ts`, `mock-data.ts`, `mock-backend.interceptor.ts`).
+- **Dynamic Select Lists:** 100% of frontend dropdowns (Classes, Sections, Subjects, Academic Sessions, Fee Heads, Teachers, Genders, Blood Groups) query real PostgreSQL REST endpoints.
+
+### 2. Teacher & Staff Payroll Engine (`/app/finance/payroll-management`)
+- **Configurable Salary Structures:** Basic pay, house rent, medical allowance, conveyance, special allowances, and 5% Provident Fund deductions per faculty member.
+- **1-Click Monthly Payroll:** Automated calculation evaluating total working days, unpaid leave deductions from approved teacher leave applications, and festival bonuses.
+- **Bursar & Principal Approval:** Single and batch approval workflows (`POST /api/v1/payroll/approve-month`).
+- **Bank & Cash Disbursement:** Electronic Fund Transfer (EFT) tracking with transaction reference audit (`POST /api/v1/payroll/disburse-month`).
+- **Official Confidential Pay Slips:** Authorized remuneration statements with English currency-in-words conversion (*"Sixty Four Thousand One Hundred Taka Only"*).
+
+### 3. Student Promotion & Annual Session Migration (`/app/students/promotion`)
+- **Annual Progression Workspace:** Session-to-session and grade-to-grade student progression mapping (e.g. Class 1 -> Class 2).
+- **Merit Rank & Roll Re-sequencing:** Automatic re-sequencing of class rolls (01, 02, 03...) based on GPA / Exam Merit Rank or Class Roll.
+- **Retention & Detention Tracking:** Supports retaining students in the same class while updating their academic session enrollment.
+- **Audit Ledger:** Every promotion batch is tracked in the system audit logs.
+
+### 4. Finance & Automated Batch Invoicing (`/app/finance/fee-collection`)
+- **Collision-Proof Invoicing:** Multi-tenant GUID-suffixed invoice numbers preventing unique constraint collisions (`IX_invoices_InvoiceNo`).
+- **1-Click Batch Fee Invoicing:** Automated fee generation across entire classes with idempotency checks (skips already invoiced students).
+- **Multi-Channel Collections:** Cash counter collections, bank deposits, and online payment integrations (bKash / Nagad).
+- **Money Receipts:** Printable official 3-copy vouchers (Student Copy, Bank Copy, Office Copy).
+
+### 5. Academic Routine & Timetable Scheduler (`/app/academic/routine`)
+- **Dynamic Timetable Matrix:** Conflict-free period scheduling by class, section, teacher, subject, and classroom room number.
+- **Batch Schedule Replacement:** 1-click weekly schedule replacement and individual period vacating.
+
+### 6. Examination & Progress Report Card Generator (`/app/reports/academic`)
+- **Term Exams & Marks Entry:** Grading system with Grade Point Average (GPA 5.0 scale), Letter Grades (A+, A, A-, B, C, D, F), and pass/fail thresholds.
+- **Official Academic Progress Report Cards:** Printable A4 report cards with subject-wise theory, objective, practical breakdown, class teacher remarks, and principal sign-off blocks.
+
+### 7. Communication & Real-Time SMS Gateway (`/app/system/sms-gateway`)
+- **Institutional SMS Dispatch:** Multi-campus SMS templates for fee payment alerts, absence notifications, and exam result publications with audit delivery logs.
+- **Notice Board:** Campus-specific announcements and circular publications.
 
 ---
 
@@ -27,14 +64,13 @@ A comprehensive, enterprise-grade multi-campus School Management System built wi
 ### Backend
 - **Framework:** .NET 8 Web API (Clean Architecture: Domain, Application, Infrastructure, API)
 - **Database:** PostgreSQL (Entity Framework Core 8 with Code-First Migrations)
-- **Authentication:** JWT Bearer Authentication with SHA256 & Refresh Tokens
-- **Rate Limiting:** .NET 8 fixed-window rate limiter on auth endpoints
-- **Test Suite:** xUnit integration test suite with 96 security & isolation test assertions
+- **Security:** JWT Bearer Authentication, BCrypt Password Hashing, Multi-Campus Tenant Scoping Middleware
+- **Rate Limiting:** .NET 8 Fixed-Window Rate Limiter on sensitive authentication routes
 
 ### Frontend
-- **Framework:** Angular 18/22 (Standalone Components, Signals, Reactive Stores)
-- **Styling:** Custom Vanilla CSS Design System with responsive grid, glassmorphism, and micro-animations
-- **Routing:** Permission-guarded routes with dynamic menu authorization
+- **Framework:** Angular 17/18 Standalone Architecture
+- **State Management:** Reactive Domain Stores (`AcademicStore`, `StudentStore`, `TeacherStore`, `AttendanceStore`, `FinanceStore`, `ExamStore`, `SystemStore`) powered by RxJS `BehaviorSubject`
+- **Styling:** Custom CSS Design System with responsive grid, KPI cards, and print media queries
 
 ---
 
@@ -43,91 +79,59 @@ A comprehensive, enterprise-grade multi-campus School Management System built wi
 ### Prerequisites
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 - [Node.js](https://nodejs.org/) (v18+ or v20+)
-- [Docker & Docker Compose](https://www.docker.com/) (optional, for containerized run)
-- [PostgreSQL 14+](https://www.postgresql.org/) (if running natively)
+- [PostgreSQL 14+](https://www.postgresql.org/)
 
----
-
-### Option A: Run with Docker Compose (Recommended)
-
-Start the entire stack (Database, .NET 8 Backend API, and Angular Nginx Frontend) with a single command:
-
-```bash
-docker compose up --build -d
+### 1. Database Configuration
+Ensure PostgreSQL is running locally on port `5432` with a database named `school_management`.  
+Connection string in `backend/src/SchoolManagement.Api/appsettings.json`:
+```json
+"ConnectionStrings": {
+  "DefaultConnection": "Host=localhost;Port=5432;Database=school_management;Username=postgres;Password=your_password"
+}
 ```
 
-- Frontend App: **http://localhost:4200**
-- Backend API & Swagger: **http://localhost:5000/swagger**
-- API Health Check: **http://localhost:5000/health**
-
-To stop all services:
-```bash
-docker compose down
-```
-
----
-
-### Option B: Run Locally on Host
-
-#### 1. Backend Setup
-```bash
+### 2. Backend Setup & Run
+```powershell
 cd backend
 dotnet restore SchoolManagement.sln
 dotnet build SchoolManagement.sln
-dotnet run --project src/SchoolManagement.Api/SchoolManagement.Api.csproj
+dotnet run --project src/SchoolManagement.Api
 ```
-The API will run on **http://localhost:5000**.
+The API will start at **http://localhost:5000**.  
+Swagger documentation available at **http://localhost:5000/swagger**.
 
-#### 2. Run Backend Tests
-```bash
-dotnet test backend/SchoolManagement.sln -m:1
-```
-Runs all 96 security and isolation tests.
-
-#### 3. Frontend Setup
-```bash
+### 3. Frontend Setup & Run
+```powershell
 cd Fontend
 npm install
-npm run build
 npm start
 ```
-Frontend accessible at **http://localhost:4200**.
+The Angular application will run at **http://localhost:4200**.
 
 ---
 
 ## 🔐 Default Demo Accounts
 
-| Role | Username | Password |
-|---|---|---|
-| **Super Admin** | `admin` | `admin123` |
-| **Senior Teacher** | `teacher` | `teacher123` |
-| **Accountant** | `accountant` | `accountant123` |
-| **Parent / Guardian** | `guardian` | `guardian123` |
-| **Student** | `student` | `student123` |
+All credentials adhere to the institutional password scheme:
+
+| Role | Username | Password | Access Scope |
+| :--- | :--- | :--- | :--- |
+| **Super Admin** | `admin` | `admin123` | Full unrestricted institutional access across all campuses |
+| **Bursar / Accountant** | `accountant` | `accountant123` | Finance, fee structures, payroll summary, fee collections |
+| **Senior Teacher** | `teacher` | `teacher123` | Classes, routine schedule, attendance, marks entry |
+| **Student** | `student` | `student123` | Personal profile, report cards, class routines, fee dues |
+| **Parent / Guardian** | `guardian` | `guardian123` | Children profile, academic progress, fee payment history |
 
 ---
 
-## 🔄 CI / CD Pipeline
+## 🧪 Verification & Integration Testing
 
-Automated GitHub Actions CI/CD workflow is configured in [`.github/workflows/ci.yml`](.github/workflows/ci.yml):
-1. **Backend CI:** Restores, builds Release solution, executes all 96 security integration tests on .NET 8 LTS.
-2. **Frontend CI:** Restores npm dependencies with caching and builds the production Angular bundle.
-3. **Container Validation:** Validates Docker Compose files and builds both container images.
-
----
-
-## 📡 Operational Endpoints (Sprint 2 & 3 Additions)
-
-| Domain | Method & Route | Description |
-|---|---|---|
-| **Bulk Students** | `GET /api/v1/students/import-template` | Download Excel admission template with cell data-validation dropdowns. |
-| **Bulk Students** | `POST /api/v1/students/bulk-import` | Multipart Excel bulk student import inside a single database transaction. |
-| **Bulk Marks** | `GET /api/v1/exams/{id}/marks-template?classId=X&subjectId=Y` | Pre-populated Excel marksheet template with student roll and names. |
-| **Bulk Marks** | `POST /api/v1/exams/{id}/marks-bulk-upload` | Multipart Excel marks upload with automated GPA and letter grade computation. |
-| **SMS Alerts** | Automated via `Attendance` & `Fees` | Automatic SMS alerts dispatched to parents on absence & instant fee payment receipt. |
-| **Digital Payments** | `POST /api/v1/fees/online-payment/initiate` | Create digital payment checkout session (bKash / Nagad). |
-| **Digital Payments** | `POST /api/v1/fees/online-payment/execute` | Complete transaction, settle invoice, and trigger SMS confirmation receipt. |
-| **Accounts Shift** | `GET /api/v1/fees/reconciliation/daily-closing?date=YYYY-MM-DD` | Daily cashier shift reconciliation report (Cash vs bKash vs Nagad vs Bank). |
+The project includes ready-to-run PowerShell verification scripts in `scratch/`:
+- `scratch/e2e_integration_test.ps1`: Full 10-module end-to-end multi-campus test suite.
+- `scratch/test_live_workflows.ps1`: Admission, attendance, exam marks, and invoicing pipeline.
+- `scratch/test_payroll_and_seed_teachers.ps1`: Multi-campus faculty payroll generation, approval, disbursement, and pay slips.
+- `scratch/test_student_promotion.ps1`: Student batch promotion, retention, and annual session migration.
+- `scratch/test_role_access_control.ps1`: Role permission boundaries and HTTP 403 Forbidden enforcement.
 
 ---
 
