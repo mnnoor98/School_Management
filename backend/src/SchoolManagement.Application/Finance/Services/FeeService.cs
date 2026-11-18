@@ -424,8 +424,14 @@ public class FeeService : IFeeService
         invoice.Status = invoice.DueAmount == 0 ? "Paid" : "Partial";
         invoice.UpdatedAt = DateTime.UtcNow;
 
-        var count = await _context.FeePayments.CountAsync();
-        var receiptNo = $"RCPT-{DateTime.UtcNow.Year}-{(count + 1).ToString("D4")}";
+        string receiptNo;
+        int rAttempt = 0;
+        do
+        {
+            var suffix = Random.Shared.Next(10000, 99999);
+            receiptNo = $"RCPT-{DateTime.UtcNow:yyyyMM}-{suffix}";
+            rAttempt++;
+        } while (await _context.FeePayments.IgnoreQueryFilters().AnyAsync(p => p.ReceiptNo == receiptNo) && rAttempt < 20);
 
         var payment = new FeePayment
         {
@@ -514,8 +520,14 @@ public class FeeService : IFeeService
             return (null, "Total payment amount must be greater than zero.");
         }
 
-        var count = await _context.FeePayments.CountAsync();
-        var receiptNo = $"RCPT-{DateTime.UtcNow.Year}-{(count + 1).ToString("D4")}";
+        string receiptNo;
+        int rAttempt = 0;
+        do
+        {
+            var suffix = Random.Shared.Next(10000, 99999);
+            receiptNo = $"RCPT-{DateTime.UtcNow:yyyyMM}-{suffix}";
+            rAttempt++;
+        } while (await _context.FeePayments.IgnoreQueryFilters().AnyAsync(p => p.ReceiptNo == receiptNo) && rAttempt < 20);
 
         var payment = new FeePayment
         {
@@ -582,8 +594,14 @@ public class FeeService : IFeeService
             amount = structure?.Amount ?? 2500;
         }
 
-        var count = await _context.StudentInvoices.CountAsync();
-        var invoiceNo = $"INV-{DateTime.UtcNow.Year}-{(count + 10001).ToString()}";
+        string invoiceNo;
+        int invAttempt = 0;
+        do
+        {
+            var suffix = Random.Shared.Next(10000, 99999);
+            invoiceNo = $"INV-{DateTime.UtcNow:yyyyMM}-{suffix}";
+            invAttempt++;
+        } while (await _context.StudentInvoices.IgnoreQueryFilters().AnyAsync(i => i.InvoiceNo == invoiceNo) && invAttempt < 20);
 
         var invoice = new StudentInvoice
         {

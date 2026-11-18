@@ -1,0 +1,1 @@
+var e={production:!0,apiBase:`/api/v1`,enableMockFallback:!1};export{e as t};

@@ -8,6 +8,7 @@ namespace SchoolManagement.Api.Controllers;
 
 [ApiController]
 [Route("api/v1")]
+[Route("api/v1/academic")]
 [Authorize]
 public class AcademicController : ControllerBase
 {
