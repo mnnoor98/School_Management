@@ -360,14 +360,14 @@ export class AcademicStoreService {
   }
 
   async assignClassSubjects(classId: string, subjectIds: string[]): Promise<boolean> {
-    const mockMappings = subjectIds.map(sid => ({ classId, subjectId: sid }));
+    const subjectMappings = subjectIds.map(sid => ({ classId, subjectId: sid }));
     try {
       const res = await firstValueFrom(this.http.post<ApiResponse<boolean>>(`${this.API_BASE}/classes/${classId}/subjects`, { subjectIds }));
-      this.saveStorage(`class_subjects_${classId}`, mockMappings);
+      this.saveStorage(`class_subjects_${classId}`, subjectMappings);
       return res?.success !== false;
     } catch (e) {
       console.warn('Backend assignClassSubjects failed, saving locally:', e);
-      this.saveStorage(`class_subjects_${classId}`, mockMappings);
+      this.saveStorage(`class_subjects_${classId}`, subjectMappings);
       return false;
     }
   }

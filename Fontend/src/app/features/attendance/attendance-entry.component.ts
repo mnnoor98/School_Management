@@ -13,7 +13,6 @@ import { ToastService } from '../../core/services/toast.service';
 import { SchoolClass, Section, Student, AttendanceRecord, User } from '../../core/models';
 import { IconComponent } from '../../shared/components/icon.component';
 import { ModalComponent } from '../../shared/components/modal.component';
-import { BadgeComponent } from '../../shared/components/badge.component';
 
 export interface AttendanceRowItem {
   studentId: string;
@@ -32,7 +31,7 @@ export interface AttendanceRowItem {
 @Component({
   selector: 'app-attendance-entry',
   standalone: true,
-  imports: [CampusImageDirective, CommonModule, FormsModule, IconComponent, ModalComponent, BadgeComponent],
+  imports: [CampusImageDirective, CommonModule, FormsModule, IconComponent, ModalComponent],
   template: `
     <div class="page-container">
       <!-- HEADER -->
