@@ -626,7 +626,7 @@ public class ExamService : IExamService
                 FullName = st.FullName,
                 BanglaName = st.BanglaName,
                 AdmissionNo = st.AdmissionNo,
-                RollNo = st.RollNo,
+                RollNo = st.RollNo ?? string.Empty,
                 ClassName = st.ClassName,
                 SectionName = st.SectionName,
                 Shift = string.IsNullOrWhiteSpace(st.Shift) ? "Morning" : st.Shift,
