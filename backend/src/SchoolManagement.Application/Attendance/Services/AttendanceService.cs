@@ -67,7 +67,7 @@ public class AttendanceService : IAttendanceService
             .ToListAsync();
     }
 
-    public async Task<bool> SaveStudentAttendanceRosterAsync(SaveRosterAttendanceRequest request, string markedBy)
+    public async Task<bool> SaveStudentAttendanceRosterAsync(SaveRosterAttendanceRequest request, string markedBy, string branchId = "br-01")
     {
         var startOfDay = DateTime.SpecifyKind(request.Date.Date, DateTimeKind.Utc);
         if (startOfDay > DateTime.UtcNow.Date.AddDays(1))
@@ -78,8 +78,15 @@ public class AttendanceService : IAttendanceService
         var dateStr = request.Date.ToString("yyyy-MM-dd");
 
         // Validate Weekend and Holiday restrictions (unless declared as Special Working Day)
-        var calendar = LoadOrCreateCalendarData("br-01");
+        var safeBranch = string.IsNullOrWhiteSpace(branchId) ? "br-01" : branchId.Trim();
+        var calendar = LoadOrCreateCalendarData(safeBranch);
         var isSpecialWorkingDay = calendar.SpecialWorkingDays.Any(s => s.IsActive && s.Date == dateStr);
+
+        // Fallback: If not declared in current branch file, check if declared in any branch/central calendar
+        if (!isSpecialWorkingDay)
+        {
+            isSpecialWorkingDay = CheckIfSpecialWorkingDayGlobally(dateStr);
+        }
 
         if (!isSpecialWorkingDay)
         {
@@ -359,16 +366,77 @@ public class AttendanceService : IAttendanceService
         return Task.FromResult(false);
     }
 
+    private bool CheckIfSpecialWorkingDayGlobally(string dateStr)
+    {
+        try
+        {
+            var baseDir = Path.Combine(AppContext.BaseDirectory, "calendar_data");
+            if (!Directory.Exists(baseDir)) return false;
+
+            var files = Directory.GetFiles(baseDir, "calendar_*.json");
+            foreach (var file in files)
+            {
+                var json = File.ReadAllText(file);
+                var data = JsonSerializer.Deserialize<BranchCalendarData>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (data?.SpecialWorkingDays != null && data.SpecialWorkingDays.Any(s => s.IsActive && s.Date == dateStr))
+                {
+                    return true;
+                }
+            }
+        }
+        catch
+        {
+            // fallback
+        }
+        return false;
+    }
+
     public Task<List<SpecialWorkingDayDto>> GetSpecialWorkingDaysAsync(string branchId)
     {
-        var data = LoadOrCreateCalendarData(branchId);
-        return Task.FromResult(data.SpecialWorkingDays);
+        var safeBranch = string.IsNullOrWhiteSpace(branchId) ? "br-01" : branchId.Trim();
+        var data = LoadOrCreateCalendarData(safeBranch);
+        var map = new Dictionary<string, SpecialWorkingDayDto>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var swd in data.SpecialWorkingDays)
+        {
+            if (!string.IsNullOrEmpty(swd.Date)) map[swd.Date] = swd;
+        }
+
+        try
+        {
+            var baseDir = Path.Combine(AppContext.BaseDirectory, "calendar_data");
+            if (Directory.Exists(baseDir))
+            {
+                var files = Directory.GetFiles(baseDir, "calendar_*.json");
+                foreach (var file in files)
+                {
+                    var json = File.ReadAllText(file);
+                    var otherData = JsonSerializer.Deserialize<BranchCalendarData>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (otherData?.SpecialWorkingDays != null)
+                    {
+                        foreach (var swd in otherData.SpecialWorkingDays)
+                        {
+                            if (!string.IsNullOrEmpty(swd.Date) && !map.ContainsKey(swd.Date))
+                            {
+                                map[swd.Date] = swd;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // fallback
+        }
+
+        return Task.FromResult(map.Values.ToList());
     }
 
     public Task<SpecialWorkingDayDto> DeclareSpecialWorkingDayAsync(string branchId, SpecialWorkingDayDto request, string declaredBy)
     {
-        var data = LoadOrCreateCalendarData(branchId);
         var safeBranch = string.IsNullOrWhiteSpace(branchId) ? "br-01" : branchId.Trim();
+        var data = LoadOrCreateCalendarData(safeBranch);
         var safeDate = (request.Date ?? string.Empty).Trim();
 
         var existing = data.SpecialWorkingDays.FirstOrDefault(s => s.Date == safeDate);
@@ -379,7 +447,31 @@ public class AttendanceService : IAttendanceService
             existing.DeclaredBy = declaredBy;
             existing.DeclaredAt = DateTime.UtcNow;
             existing.IsActive = true;
-            SaveCalendarData(branchId, data);
+            SaveCalendarData(safeBranch, data);
+
+            // Also sync to br-01 if different
+            if (safeBranch != "br-01")
+            {
+                try
+                {
+                    var mainData = LoadOrCreateCalendarData("br-01");
+                    var mainExist = mainData.SpecialWorkingDays.FirstOrDefault(s => s.Date == safeDate);
+                    if (mainExist != null)
+                    {
+                        mainExist.Reason = request.Reason;
+                        mainExist.OrderReference = request.OrderReference;
+                        mainExist.DeclaredBy = declaredBy;
+                        mainExist.IsActive = true;
+                    }
+                    else
+                    {
+                        mainData.SpecialWorkingDays.Add(existing);
+                    }
+                    SaveCalendarData("br-01", mainData);
+                }
+                catch {}
+            }
+
             return Task.FromResult(existing);
         }
 
@@ -396,19 +488,61 @@ public class AttendanceService : IAttendanceService
         };
 
         data.SpecialWorkingDays.Add(newEntry);
-        SaveCalendarData(branchId, data);
+        SaveCalendarData(safeBranch, data);
+
+        // Also sync to br-01 if different
+        if (safeBranch != "br-01")
+        {
+            try
+            {
+                var mainData = LoadOrCreateCalendarData("br-01");
+                if (!mainData.SpecialWorkingDays.Any(s => s.Date == safeDate))
+                {
+                    mainData.SpecialWorkingDays.Add(newEntry);
+                    SaveCalendarData("br-01", mainData);
+                }
+            }
+            catch {}
+        }
+
         return Task.FromResult(newEntry);
     }
 
     public Task<bool> RemoveSpecialWorkingDayAsync(string branchId, string dateOrId)
     {
-        var data = LoadOrCreateCalendarData(branchId);
+        var safeBranch = string.IsNullOrWhiteSpace(branchId) ? "br-01" : branchId.Trim();
+        var data = LoadOrCreateCalendarData(safeBranch);
         var removed = data.SpecialWorkingDays.RemoveAll(s => s.Id == dateOrId || s.Date == dateOrId);
         if (removed > 0)
         {
-            SaveCalendarData(branchId, data);
-            return Task.FromResult(true);
+            SaveCalendarData(safeBranch, data);
         }
-        return Task.FromResult(false);
+
+        try
+        {
+            var baseDir = Path.Combine(AppContext.BaseDirectory, "calendar_data");
+            if (Directory.Exists(baseDir))
+            {
+                var files = Directory.GetFiles(baseDir, "calendar_*.json");
+                foreach (var file in files)
+                {
+                    var json = File.ReadAllText(file);
+                    var otherData = JsonSerializer.Deserialize<BranchCalendarData>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (otherData?.SpecialWorkingDays != null)
+                    {
+                        var count = otherData.SpecialWorkingDays.RemoveAll(s => s.Id == dateOrId || s.Date == dateOrId);
+                        if (count > 0)
+                        {
+                            var bId = Path.GetFileNameWithoutExtension(file).Replace("calendar_", "");
+                            SaveCalendarData(bId, otherData);
+                            removed += count;
+                        }
+                    }
+                }
+            }
+        }
+        catch {}
+
+        return Task.FromResult(removed > 0);
     }
 }

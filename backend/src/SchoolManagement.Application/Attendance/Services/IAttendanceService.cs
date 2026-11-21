@@ -5,7 +5,7 @@ namespace SchoolManagement.Application.Attendance.Services;
 public interface IAttendanceService
 {
     Task<List<AttendanceRecordDto>> GetStudentAttendanceAsync(string? classId, string? sectionId, DateTime? date, DateTime? startDate = null, DateTime? endDate = null, List<string>? allowedStudentIds = null);
-    Task<bool> SaveStudentAttendanceRosterAsync(SaveRosterAttendanceRequest request, string markedBy);
+    Task<bool> SaveStudentAttendanceRosterAsync(SaveRosterAttendanceRequest request, string markedBy, string branchId = "br-01");
     Task<bool> LogAttendanceCorrectionAsync(AttendanceCorrectionDto request, string updatedBy);
     Task<List<AttendanceCorrectionDto>> GetAttendanceCorrectionsAsync();
     Task<WeekendSettingsDto> GetWeekendSettingsAsync(string branchId);

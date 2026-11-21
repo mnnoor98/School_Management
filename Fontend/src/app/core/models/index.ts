@@ -312,8 +312,7 @@ export interface SpecialWorkingDay {
   orderReference?: string;
   declaredBy?: string;
   declaredAt?: string;
-  createdAt?: string;
-  isActive?: boolean;
+  isActive: boolean;
 }
 
 export interface Exam {

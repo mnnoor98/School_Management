@@ -54,8 +54,9 @@ public class AttendanceController : ControllerBase
             return Forbid();
         }
 
+        var branchId = Request.Headers["X-Campus-Id"].FirstOrDefault() ?? _currentUser.BranchId ?? "br-01";
         var markedBy = _currentUser.Username ?? "teacher";
-        await _attendanceService.SaveStudentAttendanceRosterAsync(request, markedBy);
+        await _attendanceService.SaveStudentAttendanceRosterAsync(request, markedBy, branchId);
         return Ok(ApiResponse<bool>.Ok(true, "Attendance roster saved successfully"));
     }
 
