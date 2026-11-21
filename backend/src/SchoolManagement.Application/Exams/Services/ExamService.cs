@@ -155,7 +155,7 @@ public class ExamService : IExamService
             var (grade, gp, isPass) = CalculateGrade(item.ObtainedMarks, item.IsAbsent);
 
             var existing = await _context.ExamMarks
-                .FirstOrDefaultAsync(m => m.ExamId == request.ExamId && m.StudentId == item.StudentId && m.SubjectId == request.SubjectId);
+                .FirstOrDefaultAsync(m => m.ExamId == request.ExamId && m.StudentId == item.StudentId && (m.SubjectId == request.SubjectId || m.SubjectName.ToLower() == subjectName.ToLower()));
 
             if (existing != null)
             {
@@ -200,12 +200,17 @@ public class ExamService : IExamService
         var student = await _context.Students.FindAsync(studentId);
         if (student == null) return null;
 
-        var marks = await _context.ExamMarks
+        var rawMarks = await _context.ExamMarks
             .AsNoTracking()
             .Where(m => m.ExamId == examId && m.StudentId == studentId)
-            .OrderBy(m => m.SubjectName)
-            .Select(m => MapToDto(m))
+            .OrderBy(m => m.CreatedAt)
             .ToListAsync();
+
+        var marks = rawMarks
+            .GroupBy(m => string.IsNullOrWhiteSpace(m.SubjectId) ? m.SubjectName.Trim().ToLower() : m.SubjectId)
+            .Select(g => MapToDto(g.OrderByDescending(x => x.CreatedAt).First()))
+            .OrderBy(m => m.SubjectName)
+            .ToList();
 
         decimal totalMarks = marks.Sum(m => m.FullMarks);
         decimal totalObtained = marks.Sum(m => m.ObtainedMarks);
@@ -231,9 +236,14 @@ public class ExamService : IExamService
                 .Select(s => s.Id)
                 .ToListAsync();
 
-            var peerMarks = await _context.ExamMarks
+            var peerMarksRaw = await _context.ExamMarks
                 .AsNoTracking()
                 .Where(m => m.ExamId == examId && classStudentIds.Contains(m.StudentId))
+                .ToListAsync();
+
+            var peerMarks = peerMarksRaw
+                .GroupBy(m => new { m.StudentId, SubKey = string.IsNullOrWhiteSpace(m.SubjectId) ? m.SubjectName.Trim().ToLower() : m.SubjectId })
+                .Select(g => g.OrderByDescending(x => x.CreatedAt).First())
                 .GroupBy(m => m.StudentId)
                 .Select(g => new {
                     StudentId = g.Key,
@@ -241,7 +251,7 @@ public class ExamService : IExamService
                     HasFail = g.Any(m => !m.IsPass || m.Grade == "F" || m.ObtainedMarks < 33),
                     AvgGp = g.Average(m => m.GradePoint)
                 })
-                .ToListAsync();
+                .ToList();
 
             var sortedPeers = peerMarks
                 .OrderBy(x => x.HasFail ? 1 : 0)

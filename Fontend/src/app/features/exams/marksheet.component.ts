@@ -448,13 +448,13 @@ export interface TabulationRow {
 
                   <!-- Subject Marks -->
                   <td *ngFor="let sub of classSubjects" class="text-center">
-                    <ng-container *ngIf="row.isAssessed && row.subjectMarks[sub.id]">
-                      <div class="mark-val" [class.mark-fail]="row.subjectMarks[sub.id].isPass === false">
-                        {{ row.subjectMarks[sub.id].marks }}
+                    <ng-container *ngIf="row.isAssessed && getSubjectMark(row, sub) as m">
+                      <div class="mark-val" [class.mark-fail]="m.isPass === false">
+                        {{ m.marks }}
                       </div>
-                      <div class="text-xxs text-muted">{{ row.subjectMarks[sub.id].grade }}</div>
+                      <div class="text-xxs text-muted">{{ m.grade }}</div>
                     </ng-container>
-                    <span *ngIf="!row.isAssessed || !row.subjectMarks[sub.id]" class="text-muted">—</span>
+                    <span *ngIf="!row.isAssessed || !getSubjectMark(row, sub)" class="text-muted">—</span>
                   </td>
 
                   <!-- Total -->
@@ -1178,38 +1178,62 @@ export class MarksheetComponent implements OnInit {
 
     const mapped = await this.academicStore.getClassSubjects(this.selectedClassId);
     const allSubs = this.academicStore.getSubjects();
+    const schedules = this.examStore.getExamSchedules(this.selectedExamId, this.selectedClassId);
+    const marks = this.examStore.getExamMarks(this.selectedExamId, this.selectedClassId);
 
+    const subjectMap = new Map<string, Subject>();
+
+    // 1. From academic class subjects mapping
     if (mapped && mapped.length > 0) {
-      this.classSubjects = mapped.map((m: any) => {
-        if (m.name) return m;
+      mapped.forEach((m: any) => {
         const sid = m.subjectId || m.id;
         const found = allSubs.find(s => s.id === sid);
-        return found || {
+        const subObj: Subject = found || {
           id: sid,
-          name: m.subjectName || 'Subject',
-          code: 'SUB',
+          name: m.name || m.subjectName || 'Subject',
+          code: m.code || 'SUB',
+          type: 'Compulsory',
           fullMarks: m.fullMarks || 100,
           passMarks: m.passMarks || 33
         };
+        subjectMap.set(sid, subObj);
       });
-    } else {
-      // Collect unique subjects from actual exam marks if available
-      const marks = this.examStore.getExamMarks(this.selectedExamId, this.selectedClassId);
-      const uniqueSubIds = Array.from(new Set(marks.map(m => m.subjectId)));
-      if (uniqueSubIds.length > 0) {
-        this.classSubjects = uniqueSubIds.map(sid => {
-          const m = marks.find(x => x.subjectId === sid)!;
-          return {
-            id: sid,
-            name: m.subjectName,
-            code: 'SUB',
-            fullMarks: m.fullMarks || 100,
-            passMarks: 33
-          } as Subject;
-        });
-      } else {
-        this.classSubjects = allSubs.slice(0, 6);
+    }
+
+    // 2. From exam schedules for this class & exam
+    schedules.forEach(sch => {
+      if (sch.subjectId && !subjectMap.has(sch.subjectId)) {
+        const found = allSubs.find(s => s.id === sch.subjectId);
+        subjectMap.set(sch.subjectId, found || {
+          id: sch.subjectId,
+          name: sch.subjectName,
+          code: 'SUB',
+          type: 'Compulsory',
+          fullMarks: sch.fullMarks || 100,
+          passMarks: sch.passMarks || 33
+        } as Subject);
       }
+    });
+
+    // 3. From actual exam marks recorded
+    marks.forEach(m => {
+      if (m.subjectId && !subjectMap.has(m.subjectId)) {
+        const found = allSubs.find(s => s.id === m.subjectId);
+        subjectMap.set(m.subjectId, found || {
+          id: m.subjectId,
+          name: m.subjectName,
+          code: 'SUB',
+          type: 'Compulsory',
+          fullMarks: m.fullMarks || 100,
+          passMarks: 33
+        } as Subject);
+      }
+    });
+
+    if (subjectMap.size > 0) {
+      this.classSubjects = Array.from(subjectMap.values());
+    } else {
+      this.classSubjects = allSubs.slice(0, 6);
     }
   }
 
@@ -1272,6 +1296,20 @@ export class MarksheetComponent implements OnInit {
     // Direct backend marksheet query
     const sheet = await this.examStore.fetchStudentMarksheet(this.selectedExamId, this.selectedStudentId);
     if (sheet) {
+      if (sheet.marks && sheet.marks.length > 0) {
+        const subMap = new Map<string, typeof sheet.marks[0]>();
+        sheet.marks.forEach(m => {
+          const key = (m.subjectId || m.subjectName || '').trim().toLowerCase();
+          if (!subMap.has(key)) subMap.set(key, m);
+        });
+        sheet.marks = Array.from(subMap.values());
+        sheet.totalMarks = sheet.marks.reduce((sum, m) => sum + (m.fullMarks || 100), 0);
+        sheet.totalObtained = sheet.marks.reduce((sum, m) => sum + m.obtainedMarks, 0);
+        const hasFail = sheet.marks.some(m => !m.isPass || m.grade === 'F' || m.isAbsent || m.obtainedMarks < 33);
+        const totalGP = sheet.marks.reduce((sum, m) => sum + (m.gradePoint || 0), 0);
+        sheet.gpa = hasFail ? 0.0 : (sheet.marks.length > 0 ? Number((totalGP / sheet.marks.length).toFixed(2)) : 0.0);
+        sheet.letterGrade = hasFail ? 'F' : (sheet.gpa >= 5.0 ? 'A+' : sheet.gpa >= 4.0 ? 'A' : sheet.gpa >= 3.5 ? 'A-' : sheet.gpa >= 3.0 ? 'B' : sheet.gpa >= 2.0 ? 'C' : sheet.gpa >= 1.0 ? 'D' : 'F');
+      }
       this.marksheet = sheet;
     } else {
       const st = this.allStudents.find(s => s.id === this.selectedStudentId);
@@ -1298,6 +1336,7 @@ export class MarksheetComponent implements OnInit {
           id: sid,
           name: m.subjectName,
           code: 'SUB',
+          type: 'Compulsory',
           fullMarks: m.fullMarks || 100,
           passMarks: 33
         } as Subject;
@@ -1308,8 +1347,16 @@ export class MarksheetComponent implements OnInit {
     const unassessedRows: Omit<TabulationRow, 'rank'>[] = [];
 
     studentsInClass.forEach(st => {
-      const studentMarks = marks.filter(m => m.studentId === st.id);
-      if (studentMarks.length > 0) {
+      const studentMarksRaw = marks.filter(m => m.studentId === st.id);
+      if (studentMarksRaw.length > 0) {
+        // Deduplicate marks per student by subject
+        const subMap = new Map<string, typeof studentMarksRaw[0]>();
+        studentMarksRaw.forEach(m => {
+          const key = (m.subjectId || m.subjectName || '').trim().toLowerCase();
+          if (!subMap.has(key)) subMap.set(key, m);
+        });
+        const studentMarks = Array.from(subMap.values());
+
         const subMarksMap: { [id: string]: { marks: number; grade: string; isPass: boolean } } = {};
         studentMarks.forEach(m => {
           subMarksMap[m.subjectId] = {
@@ -1317,6 +1364,13 @@ export class MarksheetComponent implements OnInit {
             grade: m.grade,
             isPass: m.isPass
           };
+          if (m.subjectName) {
+            subMarksMap[m.subjectName.trim().toLowerCase()] = {
+              marks: m.obtainedMarks,
+              grade: m.grade,
+              isPass: m.isPass
+            };
+          }
         });
 
         const totalMarks = studentMarks.reduce((sum, m) => sum + (m.fullMarks || 100), 0);
@@ -1389,6 +1443,11 @@ export class MarksheetComponent implements OnInit {
     return Math.round((this.passedCount / this.assessedCount) * 100);
   }
 
+  getSubjectMark(row: TabulationRow, sub: Subject) {
+    if (!row?.subjectMarks || !sub) return null;
+    return row.subjectMarks[sub.id] || (sub.name ? row.subjectMarks[sub.name.trim().toLowerCase()] : null) || null;
+  }
+
   getSelectedExamName(): string {
     const e = this.exams.find(ex => ex.id === this.selectedExamId);
     return e ? `${e.name} (${e.term})` : 'Term Examination';
@@ -1456,7 +1515,7 @@ export class MarksheetComponent implements OnInit {
       `"${r.student.fullName}"`,
       r.student.admissionNo,
       r.isAssessed ? 'ASSESSED' : 'UNASSESSED',
-      ...this.classSubjects.map(s => r.subjectMarks[s.id]?.marks ?? '—'),
+      ...this.classSubjects.map(s => this.getSubjectMark(r, s)?.marks ?? '—'),
       r.isAssessed ? r.totalObtained : '—',
       r.isAssessed ? r.gpa.toFixed(2) : '—',
       r.isAssessed ? r.letterGrade : '—',

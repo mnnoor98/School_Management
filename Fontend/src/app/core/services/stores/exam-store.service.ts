@@ -318,7 +318,15 @@ export class ExamStoreService {
   getStudentMarksheet(student: Student, exam: Exam, subjects?: Subject[]): StudentMarksheet | null {
     if (!student || !exam) return null;
 
-    const studentMarks = this.marks$.value.filter(m => m.studentId === student.id && m.examId === exam.id);
+    const studentMarksRaw = this.marks$.value.filter(m => m.studentId === student.id && m.examId === exam.id);
+    const subMap = new Map<string, ExamMark>();
+    studentMarksRaw.forEach(m => {
+      const key = (m.subjectId || m.subjectName || '').trim().toLowerCase();
+      if (!subMap.has(key)) {
+        subMap.set(key, m);
+      }
+    });
+    const studentMarks = Array.from(subMap.values());
 
     if (studentMarks.length === 0) {
       return {
