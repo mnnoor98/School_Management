@@ -43,7 +43,7 @@ interface ClassSubjectSchemeRow {
   template: `
     <div class="page-container">
       <!-- PAGE HEADER -->
-      <div class="page-header">
+      <div class="page-header no-print">
         <div>
           <div class="header-tag">
             <span class="pulse-dot"></span>
@@ -74,7 +74,7 @@ interface ClassSubjectSchemeRow {
       </div>
 
       <!-- TOP SUMMARY CARDS -->
-      <div class="stats-grid">
+      <div class="stats-grid no-print">
         <div class="stat-card">
           <div class="stat-icon-box bg-indigo">
             <app-icon name="award" [size]="22"></app-icon>
@@ -129,7 +129,7 @@ interface ClassSubjectSchemeRow {
       </div>
 
       <!-- NAVIGATION TABS -->
-      <div class="tab-nav-bar">
+      <div class="tab-nav-bar no-print">
         <button
           type="button"
           class="tab-btn"
@@ -326,7 +326,7 @@ interface ClassSubjectSchemeRow {
 
       <!-- TAB 2: DATESHEET & TIMETABLE -->
       <div *ngIf="activeTab === 'schedules'" class="tab-pane">
-        <div class="schedule-control-card">
+        <div class="schedule-control-card no-print">
           <div class="schedule-selectors">
             <div class="form-group mb-0">
               <label class="form-label">Selected Exam Cycle:</label>
@@ -360,9 +360,64 @@ interface ClassSubjectSchemeRow {
           </div>
         </div>
 
-        <!-- TIMETABLE TABLE -->
-        <div class="card" id="printable-datesheet">
-          <div class="card-header flex-between">
+        <!-- TIMETABLE TABLE & PRINTABLE DATESHEET -->
+        <div class="card printable-datesheet-card" id="printable-datesheet">
+          <!-- OFFICIAL INSTITUTIONAL PRINT HEADER (PRINT ONLY) -->
+          <div class="print-datesheet-header only-print">
+            <div class="print-header-inner">
+              <div class="print-crest-col">
+                <div class="crest-emblem">
+                  <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                    <path d="M2 17l10 5 10-5"></path>
+                    <path d="M2 12l10 5 10-5"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="print-title-col">
+                <h1 class="inst-name">SCHOLARS INTERNATIONAL ACADEMY</h1>
+                <p class="inst-meta">
+                  <span>{{ getActiveBranchName() }}</span>
+                  <span class="meta-sep">•</span>
+                  <span>Ministry of Education & BISE Curriculum Aligned</span>
+                  <span class="meta-sep">•</span>
+                  <span>Academic Session: {{ getSelectedExamSession() }}</span>
+                </p>
+                <div class="datesheet-doc-badge">
+                  OFFICIAL EXAMINATION TIMETABLE & DATESHEET
+                </div>
+              </div>
+              <div class="print-meta-col">
+                <div class="meta-line"><span class="m-lbl">Term:</span> <strong class="m-val">{{ getSelectedExamTerm() }}</strong></div>
+                <div class="meta-line"><span class="m-lbl">Session:</span> <span class="m-val">{{ getSelectedExamSession() }}</span></div>
+                <div class="meta-line"><span class="m-lbl">Issued:</span> <span class="m-val">{{ todayDateFormatted }}</span></div>
+                <div class="meta-line"><span class="m-lbl">Ref No:</span> <span class="m-val">SIA/EXAM/{{ getSelectedExamSession().split('-')[0] }}-{{ getSelectedScheduleClassCode() }}</span></div>
+              </div>
+            </div>
+
+            <!-- DATESHEET METADATA BANNER -->
+            <div class="datesheet-summary-banner">
+              <div class="ds-banner-item">
+                <span class="lbl">Examination Name:</span>
+                <strong class="val">{{ getSelectedExamName() }}</strong>
+              </div>
+              <div class="ds-banner-item">
+                <span class="lbl">Target Class:</span>
+                <strong class="val">{{ getSelectedScheduleClassName() }}</strong>
+              </div>
+              <div class="ds-banner-item">
+                <span class="lbl">Exam Window:</span>
+                <strong class="val">{{ getSelectedExamPeriod() }}</strong>
+              </div>
+              <div class="ds-banner-item">
+                <span class="lbl">Total Papers:</span>
+                <strong class="val">{{ filteredSchedules.length }} Examination Papers</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- SCREEN CARD HEADER (HIDDEN IN PRINT) -->
+          <div class="card-header flex-between no-print">
             <div class="card-title">
               <app-icon name="calendar" [size]="18" class="text-primary"></app-icon>
               <span>Exam Timetable: {{ getSelectedExamName() }}</span>
@@ -374,38 +429,40 @@ interface ClassSubjectSchemeRow {
             <table class="app-table">
               <thead>
                 <tr>
+                  <th class="col-sl">#</th>
                   <th>Exam Date & Day</th>
-                  <th>Time Slot</th>
                   <th>Target Class</th>
                   <th>Subject Paper</th>
+                  <th>Time Slot</th>
                   <th>Hall / Room</th>
                   <th>Full / Pass Marks</th>
-                  <th class="text-right">Actions</th>
+                  <th class="text-right no-print">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let sch of filteredSchedules">
+                <tr *ngFor="let sch of filteredSchedules; let i = index">
+                  <td class="col-sl font-mono">{{ i + 1 }}</td>
                   <td>
                     <div class="date-cell">
-                      <span class="date-badge-cal">{{ sch.examDate }}</span>
-                      <span class="day-label">{{ sch.day }}</span>
+                      <span class="date-badge-cal">{{ formatExamDate(sch.examDate) }}</span>
+                      <span class="day-label">{{ sch.day || getDayFromDate(sch.examDate) }}</span>
                     </div>
-                  </td>
-                  <td>
-                    <span class="time-slot-pill">
-                      <app-icon name="clock" [size]="12"></app-icon>
-                      {{ sch.startTime }} - {{ sch.endTime }}
-                    </span>
                   </td>
                   <td>
                     <span class="class-tag">{{ sch.className }}</span>
                   </td>
                   <td>
-                    <strong>{{ sch.subjectName }}</strong>
+                    <strong class="subject-name">{{ sch.subjectName }}</strong>
+                  </td>
+                  <td>
+                    <span class="time-slot-pill">
+                      <app-icon name="clock" [size]="12" class="no-print"></app-icon>
+                      {{ sch.startTime }} - {{ sch.endTime }}
+                    </span>
                   </td>
                   <td>
                     <span class="room-pill">
-                      <app-icon name="map-pin" [size]="12"></app-icon>
+                      <app-icon name="map-pin" [size]="12" class="no-print"></app-icon>
                       {{ sch.roomNo }}
                     </span>
                   </td>
@@ -414,7 +471,7 @@ interface ClassSubjectSchemeRow {
                       <strong>{{ sch.fullMarks }}</strong> / {{ sch.passMarks }}
                     </span>
                   </td>
-                  <td class="text-right">
+                  <td class="text-right no-print">
                     <button
                       type="button"
                       class="btn-action-icon btn-danger"
@@ -426,12 +483,65 @@ interface ClassSubjectSchemeRow {
                   </td>
                 </tr>
                 <tr *ngIf="filteredSchedules.length === 0">
-                  <td colspan="7" class="text-center py-5 text-muted">
+                  <td colspan="8" class="text-center py-5 text-muted">
                     No examination timetable entries added for the selected exam & class. Click <strong>+ Add Subject Exam Slot</strong> to populate the datesheet.
                   </td>
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- CANDIDATE DIRECTIVES & DISCIPLINE (PRINT ONLY) -->
+          <div class="print-candidate-directives only-print">
+            <div class="directives-header">
+              <strong>IMPORTANT EXAMINATION DIRECTIVES FOR CANDIDATES:</strong>
+            </div>
+            <ol class="directives-list">
+              <li>Examinees must occupy designated desks in their allocated examination hall <strong>at least 15 minutes</strong> before the start bell.</li>
+              <li>Entry to the hall strictly requires presentation of the authorized <strong>Physical Admit Card</strong> and institutional Student ID.</li>
+              <li>Mobile phones, programmable calculators, smartwatches, digital devices, and loose notes/papers are strictly prohibited inside the exam hall.</li>
+              <li>No candidate shall be permitted to submit scripts or leave the hall during the <strong>first 60 minutes</strong> of the session.</li>
+              <li>Candidates must bring their own required writing and geometry instruments; borrowing items inside the hall is strictly forbidden.</li>
+              <li>Any adoption of unfair means, misconduct, or breach of examination rules will lead to immediate cancellation of candidature.</li>
+            </ol>
+          </div>
+
+          <!-- OFFICIAL SIGNATURES & INSTITUTIONAL SEAL (PRINT ONLY) -->
+          <div class="print-signatures-container only-print">
+            <div class="sig-column">
+              <div class="sig-placeholder"></div>
+              <div class="sig-line"></div>
+              <div class="sig-role">Class Teacher / Invigilator</div>
+              <div class="sig-sub">Department of Academics</div>
+            </div>
+
+            <div class="sig-column seal-col">
+              <div class="official-seal-frame">
+                <span class="seal-icon">★</span>
+                <span class="seal-text">OFFICIAL INSTITUTIONAL SEAL</span>
+                <span class="seal-branch">{{ getActiveBranchName() }}</span>
+              </div>
+            </div>
+
+            <div class="sig-column">
+              <div class="sig-placeholder"></div>
+              <div class="sig-line"></div>
+              <div class="sig-role">Controller of Examinations</div>
+              <div class="sig-sub">Academic Examination Committee</div>
+            </div>
+
+            <div class="sig-column">
+              <div class="sig-placeholder"></div>
+              <div class="sig-line"></div>
+              <div class="sig-role">Principal & Head of Institution</div>
+              <div class="sig-sub">Scholars International Academy</div>
+            </div>
+          </div>
+
+          <!-- PRINT FOOTER NOTE (PRINT ONLY) -->
+          <div class="print-footer-endorsement only-print">
+            <span>This is an official document generated by Scholars International Academy ERP. Verified on {{ todayDateFormatted }}.</span>
+            <span>Document Ref: SIA-EXAM-DS-{{ getSelectedExamSession() }}</span>
           </div>
         </div>
       </div>
@@ -1736,6 +1846,401 @@ interface ClassSubjectSchemeRow {
       margin: 0 0 4px 0;
       font-size: 0.85rem;
     }
+
+    /* Print Formatting & Institutional Layout */
+    .only-print {
+      display: none;
+    }
+    .col-sl {
+      width: 44px;
+      text-align: center;
+    }
+
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 10mm 12mm;
+      }
+
+      body, html {
+        background: #ffffff !important;
+        color: #000000 !important;
+        font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif !important;
+      }
+
+      .no-print {
+        display: none !important;
+      }
+
+      .only-print {
+        display: block !important;
+      }
+
+      .page-container {
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+
+      .tab-pane {
+        padding: 0 !important;
+        margin: 0 !important;
+        display: block !important;
+      }
+
+      .card.printable-datesheet-card,
+      #printable-datesheet {
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      .app-table-wrapper {
+        overflow: visible !important;
+        width: 100% !important;
+        border: none !important;
+        box-shadow: none !important;
+        margin-bottom: 12px !important;
+      }
+
+      .app-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        table-layout: auto !important;
+        margin: 0 !important;
+        font-size: 11px !important;
+      }
+
+      .app-table th {
+        background: #f1f5f9 !important;
+        color: #0f172a !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        font-size: 9.5px !important;
+        letter-spacing: 0.5px !important;
+        border: 1px solid #94a3b8 !important;
+        padding: 6px 8px !important;
+        text-align: left !important;
+      }
+
+      .app-table th.col-sl {
+        text-align: center !important;
+      }
+
+      .app-table td {
+        border: 1px solid #cbd5e1 !important;
+        padding: 6px 8px !important;
+        color: #0f172a !important;
+        font-size: 10.5px !important;
+        vertical-align: middle !important;
+      }
+
+      .app-table td.col-sl {
+        text-align: center !important;
+      }
+
+      .app-table tr {
+        page-break-inside: avoid !important;
+      }
+
+      .app-table tbody tr:nth-child(even) td {
+        background-color: #f8fafc !important;
+      }
+
+      /* Datesheet print header */
+      .print-datesheet-header {
+        margin-bottom: 14px;
+        border-bottom: 2px solid #0f172a;
+        padding-bottom: 10px;
+      }
+
+      .print-header-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 10px;
+      }
+
+      .crest-emblem {
+        width: 50px;
+        height: 50px;
+        border-radius: 8px;
+        border: 2px solid #0f172a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #0f172a;
+      }
+
+      .print-title-col {
+        flex: 1;
+        text-align: center;
+      }
+
+      .inst-name {
+        font-size: 18px !important;
+        font-weight: 900 !important;
+        color: #0f172a !important;
+        letter-spacing: 0.8px !important;
+        margin: 0 0 2px 0 !important;
+        text-transform: uppercase;
+      }
+
+      .inst-meta {
+        font-size: 10px !important;
+        color: #475569 !important;
+        margin: 0 0 6px 0 !important;
+      }
+
+      .meta-sep {
+        margin: 0 6px;
+        color: #94a3b8;
+      }
+
+      .datesheet-doc-badge {
+        display: inline-block;
+        background: #0f172a !important;
+        color: #ffffff !important;
+        font-size: 10.5px !important;
+        font-weight: 800 !important;
+        letter-spacing: 1px !important;
+        padding: 3px 12px !important;
+        border-radius: 4px;
+        text-transform: uppercase;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .print-meta-col {
+        text-align: right;
+        font-size: 9.5px;
+        color: #334155;
+        min-width: 150px;
+      }
+
+      .meta-line {
+        line-height: 1.35;
+      }
+
+      .m-lbl {
+        color: #64748b;
+        font-weight: 600;
+        margin-right: 3px;
+      }
+
+      .m-val {
+        color: #0f172a;
+      }
+
+      .datesheet-summary-banner {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        background: #f8fafc !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 4px;
+        padding: 6px 10px;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .ds-banner-item {
+        font-size: 9.5px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .ds-banner-item .lbl {
+        color: #64748b;
+        font-size: 8.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .ds-banner-item .val {
+        color: #0f172a;
+        font-weight: 700;
+        font-size: 10.5px;
+      }
+
+      .date-cell {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .date-badge-cal {
+        font-weight: 700 !important;
+        color: #0f172a !important;
+        font-size: 10.5px !important;
+      }
+
+      .day-label {
+        font-size: 9.5px !important;
+        color: #475569 !important;
+        font-weight: 600 !important;
+      }
+
+      .class-tag {
+        font-weight: 700 !important;
+        color: #0f172a !important;
+        background: #f1f5f9 !important;
+        border: 1px solid #cbd5e1 !important;
+        padding: 2px 5px !important;
+        border-radius: 3px !important;
+        font-size: 9.5px !important;
+        display: inline-block;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .subject-name {
+        font-weight: 700 !important;
+        color: #0f172a !important;
+        font-size: 11px !important;
+      }
+
+      .time-slot-pill {
+        font-weight: 600 !important;
+        color: #0f172a !important;
+        background: transparent !important;
+        padding: 0 !important;
+        border: none !important;
+        white-space: nowrap !important;
+        font-size: 10px !important;
+      }
+
+      .room-pill {
+        font-weight: 600 !important;
+        color: #0f172a !important;
+        background: transparent !important;
+        padding: 0 !important;
+        border: none !important;
+        font-size: 10px !important;
+      }
+
+      .marks-pill {
+        font-weight: 700 !important;
+        color: #0f172a !important;
+        background: transparent !important;
+        padding: 0 !important;
+        border: none !important;
+        font-size: 10px !important;
+        white-space: nowrap !important;
+      }
+
+      /* Candidate Directives */
+      .print-candidate-directives {
+        margin-top: 12px;
+        background: #fafaf9 !important;
+        border: 1px dashed #94a3b8 !important;
+        border-radius: 4px;
+        padding: 6px 10px;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        page-break-inside: avoid !important;
+      }
+
+      .directives-header {
+        font-size: 9px;
+        letter-spacing: 0.5px;
+        color: #0f172a;
+        margin-bottom: 3px;
+      }
+
+      .directives-list {
+        margin: 0;
+        padding-left: 14px;
+        font-size: 8.5px;
+        line-height: 1.4;
+        color: #334155;
+      }
+
+      .directives-list li {
+        margin-bottom: 1.5px;
+      }
+
+      /* Signatures container */
+      .print-signatures-container {
+        margin-top: 32px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 10px;
+        page-break-inside: avoid !important;
+      }
+
+      .sig-column {
+        text-align: center;
+        width: 140px;
+      }
+
+      .sig-line {
+        border-bottom: 1.5px solid #0f172a;
+        margin-bottom: 5px;
+      }
+
+      .sig-role {
+        font-size: 9.5px;
+        font-weight: 700;
+        color: #0f172a;
+      }
+
+      .sig-sub {
+        font-size: 8px;
+        color: #64748b;
+      }
+
+      .seal-col {
+        width: 110px;
+      }
+
+      .official-seal-frame {
+        border: 1.5px dashed #64748b;
+        border-radius: 50%;
+        width: 76px;
+        height: 76px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 4px;
+      }
+
+      .seal-icon {
+        font-size: 10px;
+        color: #64748b;
+      }
+
+      .seal-text {
+        font-size: 6.5px;
+        font-weight: 800;
+        color: #475569;
+        line-height: 1.1;
+        letter-spacing: 0.3px;
+      }
+
+      .seal-branch {
+        font-size: 6px;
+        color: #64748b;
+      }
+
+      .print-footer-endorsement {
+        margin-top: 16px;
+        border-top: 1px solid #e2e8f0;
+        padding-top: 4px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 7.5px;
+        color: #94a3b8;
+      }
+    }
   `]
 })
 export class ExamSetupComponent implements OnInit {
@@ -2225,10 +2730,20 @@ export class ExamSetupComponent implements OnInit {
   }
 
   get filteredSchedules(): ExamScheduleItem[] {
-    return this.schedules.filter(sch => {
+    const list = this.schedules.filter(sch => {
       const matchExam = !this.selectedScheduleExamId || sch.examId === this.selectedScheduleExamId;
       const matchClass = this.selectedScheduleClassId === 'ALL' || sch.classId === this.selectedScheduleClassId;
       return matchExam && matchClass;
+    });
+
+    return [...list].sort((a, b) => {
+      const dateA = (a.examDate || '').split('T')[0];
+      const dateB = (b.examDate || '').split('T')[0];
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
+      const timeA = (a.startTime || '');
+      const timeB = (b.startTime || '');
+      if (timeA !== timeB) return timeA.localeCompare(timeB);
+      return (a.className || '').localeCompare(b.className || '');
     });
   }
 
@@ -2256,7 +2771,69 @@ export class ExamSetupComponent implements OnInit {
 
   getSelectedExamName(): string {
     const ex = this.exams.find(e => e.id === this.selectedScheduleExamId);
-    return ex ? `${ex.name} (${ex.term})` : 'All Terms';
+    return ex ? ex.name : 'All Examinations';
+  }
+
+  getSelectedExamTerm(): string {
+    const ex = this.exams.find(e => e.id === this.selectedScheduleExamId);
+    return ex ? ex.term : 'All Terms';
+  }
+
+  getSelectedExamSession(): string {
+    const ex = this.exams.find(e => e.id === this.selectedScheduleExamId);
+    return ex?.academicYear || '2026 - 2027';
+  }
+
+  getSelectedScheduleClassName(): string {
+    if (this.selectedScheduleClassId === 'ALL') return 'All Classes (Composite Datesheet)';
+    const c = this.classes.find(cls => cls.id === this.selectedScheduleClassId);
+    return c ? c.name : 'All Classes';
+  }
+
+  getSelectedScheduleClassCode(): string {
+    if (this.selectedScheduleClassId === 'ALL') return 'ALL';
+    const c = this.classes.find(cls => cls.id === this.selectedScheduleClassId);
+    return c ? (c.code || c.name.replace(/\s+/g, '').toUpperCase()) : 'GEN';
+  }
+
+  getSelectedExamPeriod(): string {
+    const ex = this.exams.find(e => e.id === this.selectedScheduleExamId);
+    if (!ex) return 'Academic Session 2026-2027';
+    return `${this.formatExamDate(ex.startDate)} to ${this.formatExamDate(ex.endDate)}`;
+  }
+
+  get todayDateFormatted(): string {
+    return new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  formatExamDate(dateStr: string): string {
+    if (!dateStr) return '';
+    const clean = dateStr.split('T')[0];
+    const parts = clean.split('-');
+    if (parts.length === 3) {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const day = parts[2];
+      const mIdx = parseInt(parts[1], 10) - 1;
+      const year = parts[0];
+      if (mIdx >= 0 && mIdx < 12) {
+        return `${day} ${months[mIdx]} ${year}`;
+      }
+    }
+    return clean;
+  }
+
+  getDayFromDate(dateStr: string): string {
+    if (!dateStr) return '';
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const parts = dateStr.split('T')[0].split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const d = new Date(year, month, day).getDay();
+      return days[d] || '';
+    }
+    return '';
   }
 
   calculateDurationDays(start: string, end: string): number {
@@ -2454,6 +3031,14 @@ export class ExamSetupComponent implements OnInit {
   }
 
   printDatesheet() {
-    window.print();
+    this.activeTab = 'schedules';
+    document.body.classList.add('printing-datesheet');
+    this.cdr.detectChanges();
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        document.body.classList.remove('printing-datesheet');
+      }, 500);
+    }, 150);
   }
 }
