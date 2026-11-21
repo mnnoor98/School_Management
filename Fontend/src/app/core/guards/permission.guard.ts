@@ -26,6 +26,17 @@ export const permissionGuard: CanActivateFn = async (route, state) => {
   // Dashboard remains the landing page when a role has no assigned screens.
   if (state.url.split('?')[0] === '/app/dashboard') return true;
 
+  const currentPath = state.url.split('?')[0];
+
+  // 1. If the route explicitly exists in the user's authorized menu tree from backend, grant access
+  const hasAuthorizedRoute = auth.getMyMenus().some(m =>
+    (m.route && m.route === currentPath) ||
+    (m.children && m.children.some(c => c.route === currentPath))
+  );
+  if (hasAuthorizedRoute) {
+    return true;
+  }
+
   const permissionCode = route.data['permissionCode'] as string;
   if (!permissionCode) {
     return true; // No explicit permission restriction on route

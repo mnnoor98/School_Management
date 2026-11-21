@@ -167,21 +167,21 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/attendance/attendance-entry.component').then(m => m.AttendanceEntryComponent),
         canActivate: [permissionGuard],
-        data: { permissionCode: 'ATT_ENTRY_VIEW' }
+        data: { permissionCode: 'ATT_STUDENT' }
       },
       {
         path: 'attendance/correction',
         loadComponent: () =>
           import('./features/attendance/attendance-correction.component').then(m => m.AttendanceCorrectionComponent),
         canActivate: [permissionGuard],
-        data: { permissionCode: 'ATT_CORRECTION_VIEW' }
+        data: { permissionCode: 'ATT_CORRECTION' }
       },
       {
         path: 'attendance/reports',
         loadComponent: () =>
           import('./features/attendance/attendance-reports.component').then(m => m.AttendanceReportsComponent),
         canActivate: [permissionGuard],
-        data: { permissionCode: 'ATT_REPORTS_VIEW' }
+        data: { permissionCode: 'ATT_REPORT' }
       },
       // Examination
       {

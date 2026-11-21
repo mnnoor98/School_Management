@@ -205,27 +205,102 @@ export class AuthService {
     this.router.navigate(['/login']);
   }
 
+  private normalizeMenuCodes(code: string): string[] {
+    if (!code) return [];
+    const raw = code.trim().toUpperCase();
+    const stripped = raw.replace(/_(VIEW|CREATE|EDIT|DELETE|APPROVE|EXPORT)$/, '');
+    const set = new Set<string>([raw, stripped]);
+
+    const aliasMap: Record<string, string[]> = {
+      'ATT_ENTRY': ['ATT_STUDENT', 'ATT_ENTRY'],
+      'ATT_STUDENT': ['ATT_STUDENT', 'ATT_ENTRY'],
+      'ATT_CORRECTION': ['ATT_CORRECTION'],
+      'ATT_REPORT': ['ATT_REPORT', 'ATT_REPORTS'],
+      'ATT_REPORTS': ['ATT_REPORT', 'ATT_REPORTS'],
+      'STUD_ADMISSION': ['STU_ADMIT', 'STUD_ADMISSION'],
+      'STU_ADMIT': ['STU_ADMIT', 'STUD_ADMISSION'],
+      'STUD_LIST': ['STU_LIST', 'STUD_LIST'],
+      'STU_LIST': ['STU_LIST', 'STUD_LIST'],
+      'STUD_PROMOTION': ['STUD_PROMOTION'],
+      'TEACH_LIST': ['TEACH_LIST'],
+      'TEACH_LEAVE': ['TEACH_LEAVE'],
+      'ACAD_CLASSES': ['ACAD_CLASSES'],
+      'ACAD_SUBJECTS': ['ACAD_SUBJECTS'],
+      'ACAD_ROUTINE': ['ACAD_ROUTINE'],
+      'EXAM_SETUP': ['EXAM_SETUP'],
+      'EXAM_MARKS': ['EXAM_MARKS'],
+      'EXAM_RESULTS': ['EXAM_RESULTS', 'EXAM_MARKSHEET'],
+      'EXAM_MARKSHEET': ['EXAM_RESULTS', 'EXAM_MARKSHEET'],
+      'FIN_FEES': ['FIN_FEES', 'FIN_STRUCTURE'],
+      'FIN_STRUCTURE': ['FIN_FEES', 'FIN_STRUCTURE'],
+      'FIN_INVOICES': ['FIN_INVOICES'],
+      'FIN_COLLECTION': ['FIN_COLLECTION'],
+      'FIN_EXPENSES': ['FIN_EXPENSES'],
+      'FIN_PAYROLL': ['FIN_PAYROLL'],
+      'FIN_BANKING': ['FIN_BANKING'],
+      'COMM_NOTICE': ['COMM_NOTICE'],
+      'COMM_SMS': ['COMM_SMS'],
+      'REPORTS': ['REPORTS', 'REP_ACADEMIC', 'REP_FINANCE'],
+      'REP_ACADEMIC': ['REP_ACADEMIC', 'REPORTS'],
+      'REP_FINANCE': ['REP_FINANCE', 'REPORTS'],
+      'DASHBOARD': ['DASHBOARD'],
+      'ADMIN_SCHOOL': ['ADMIN_SCHOOL'],
+      'ADMIN_USERS': ['SEC_USERS', 'ADMIN_USERS'],
+      'SEC_USERS': ['SEC_USERS', 'ADMIN_USERS'],
+      'ADMIN_ROLES': ['SEC_ROLES', 'ADMIN_ROLES', 'ADMIN_ROLE_PERM'],
+      'SEC_ROLES': ['SEC_ROLES', 'ADMIN_ROLES', 'ADMIN_ROLE_PERM'],
+      'ADMIN_MENU': ['SEC_MENUS', 'ADMIN_MENU'],
+      'SEC_MENUS': ['SEC_MENUS', 'ADMIN_MENU'],
+      'ADMIN_USER_PERM': ['SEC_USER_OVERRIDES', 'ADMIN_USER_PERM'],
+      'SEC_USER_OVERRIDES': ['SEC_USER_OVERRIDES', 'ADMIN_USER_PERM'],
+      'ADMIN_AUDIT': ['SEC_AUDIT', 'ADMIN_AUDIT'],
+      'SEC_AUDIT': ['SEC_AUDIT', 'ADMIN_AUDIT'],
+      'ADMIN_BACKUP': ['ADMIN_BACKUP'],
+      'ADMIN_DEPLOYMENT': ['ADMIN_DEPLOYMENT'],
+      'ADMIN_MASTER_DATA': ['ADMIN_MASTER_DATA']
+    };
+
+    const aliases = aliasMap[raw] || aliasMap[stripped] || [];
+    for (const a of aliases) {
+      set.add(a);
+    }
+    return Array.from(set);
+  }
+
   hasPermission(menuCode: string, action: PermissionAction = 'view'): boolean {
     const user = this.currentUser$.value;
     if (!user) return false;
     const isSuperAdmin = user.isSuperAdmin || (user.roleName || '').toLowerCase().includes('super') || (user.roleName || '').toLowerCase().includes('admin');
     if (isSuperAdmin) return true;
 
+    const candidateCodes = this.normalizeMenuCodes(menuCode);
+
     // Check user overrides first
-    const override = this.myOverrides$.value.find(o => o.menuCode === menuCode && o.action === action);
-    if (override) {
-      if (override.override === 'Allow') return true;
-      if (override.override === 'Deny') return false;
+    for (const code of candidateCodes) {
+      const override = this.myOverrides$.value.find(o => o.menuCode === code && o.action === action);
+      if (override) {
+        if (override.override === 'Allow') return true;
+        if (override.override === 'Deny') return false;
+      }
     }
 
     // Fall back to role permissions
-    const rolePerm = this.myRolePermissions$.value.find(rp => rp.menuCode === menuCode);
-    if (rolePerm) {
-      return !!(rolePerm as any)[action];
+    for (const code of candidateCodes) {
+      const rolePerm = this.myRolePermissions$.value.find(rp => rp.menuCode === code);
+      if (rolePerm) {
+        if (!!(rolePerm as any)[action]) return true;
+      }
     }
 
-    if (menuCode === 'DASHBOARD' && action === 'view') return true;
-    return this.myMenus$.value.some(m => m.code === menuCode || (m.children && m.children.some(c => c.code === menuCode)));
+    if (candidateCodes.includes('DASHBOARD') && action === 'view') return true;
+
+    // Fall back to authorized menus
+    for (const code of candidateCodes) {
+      const inMenus = this.myMenus$.value.some(m => m.code === code || (m.children && m.children.some(c => c.code === code)));
+      if (inMenus) return true;
+    }
+
+    return false;
   }
 
   getMyMenus(): MenuItem[] {
