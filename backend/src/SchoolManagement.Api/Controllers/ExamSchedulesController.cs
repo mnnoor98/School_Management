@@ -41,8 +41,15 @@ public class ExamSchedulesController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.ExamId) || string.IsNullOrWhiteSpace(req.SubjectName))
             return BadRequest(ApiResponse<ExamScheduleItemDto>.Fail("Exam and Subject are required"));
 
-        var dto = await _examService.CreateScheduleAsync(req);
-        return CreatedAtAction(nameof(GetScheduleById), new { id = dto.Id }, ApiResponse<ExamScheduleItemDto>.Ok(dto, "Exam schedule added successfully"));
+        try
+        {
+            var dto = await _examService.CreateScheduleAsync(req);
+            return CreatedAtAction(nameof(GetScheduleById), new { id = dto.Id }, ApiResponse<ExamScheduleItemDto>.Ok(dto, "Exam schedule added successfully"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<ExamScheduleItemDto>.Fail(ex.Message));
+        }
     }
 
     [HttpDelete("{id}")]

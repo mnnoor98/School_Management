@@ -375,6 +375,30 @@ public class ExamService : IExamService
 
     public async Task<ExamScheduleItemDto> CreateScheduleAsync(CreateExamScheduleRequest req)
     {
+        // 1. Validate Duplicate Subject in the same Exam Cycle and Class
+        var existingSubject = await _context.ExamScheduleItems
+            .FirstOrDefaultAsync(s => s.ExamId == req.ExamId && 
+                                      s.ClassId == req.ClassId && 
+                                      (s.SubjectId == req.SubjectId || s.SubjectName.ToLower() == req.SubjectName.ToLower()));
+
+        if (existingSubject != null)
+        {
+            throw new InvalidOperationException($"Subject '{req.SubjectName}' is already scheduled for {req.ClassName} on {existingSubject.ExamDate:dd MMM yyyy}. A subject can only be scheduled once per examination term.");
+        }
+
+        // 2. Validate Time Slot Conflict for the same Class
+        var targetDateUtc = DateTime.SpecifyKind(req.ExamDate.Date, DateTimeKind.Utc);
+        var existingSlot = await _context.ExamScheduleItems
+            .FirstOrDefaultAsync(s => s.ExamId == req.ExamId &&
+                                      s.ClassId == req.ClassId &&
+                                      s.ExamDate.Date == targetDateUtc.Date &&
+                                      s.StartTime == req.StartTime);
+
+        if (existingSlot != null)
+        {
+            throw new InvalidOperationException($"Time slot conflict: Class '{req.ClassName}' already has '{existingSlot.SubjectName}' examination scheduled on {existingSlot.ExamDate:dd MMM yyyy} at {existingSlot.StartTime}.");
+        }
+
         var item = new ExamScheduleItem
         {
             ExamId = req.ExamId,
@@ -382,7 +406,7 @@ public class ExamService : IExamService
             ClassName = req.ClassName,
             SubjectId = req.SubjectId,
             SubjectName = req.SubjectName,
-            ExamDate = DateTime.SpecifyKind(req.ExamDate, DateTimeKind.Utc),
+            ExamDate = targetDateUtc,
             Day = req.Day,
             StartTime = req.StartTime,
             EndTime = req.EndTime,

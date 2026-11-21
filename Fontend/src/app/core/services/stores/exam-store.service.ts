@@ -199,6 +199,11 @@ export class ExamStoreService {
           const updated = this.examSchedules$.value.map(s => s.id === newItem.id ? res.data : s);
           this.examSchedules$.next(updated);
         }
+      },
+      error: err => {
+        // Rollback optimistic addition if server rejects (e.g. duplicate or clash)
+        const rollback = this.examSchedules$.value.filter(s => s.id !== newItem.id);
+        this.examSchedules$.next(rollback);
       }
     });
 

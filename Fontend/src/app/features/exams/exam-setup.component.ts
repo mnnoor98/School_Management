@@ -969,10 +969,28 @@ interface ClassSubjectSchemeRow {
           <div class="form-group">
             <label class="form-label required">Subject Paper</label>
             <select class="form-control" [(ngModel)]="scheduleForm.subjectId" (change)="onScheduleSubjectChange()">
-              <option *ngFor="let sub of subjects" [value]="sub.id">
+              <option *ngFor="let sub of subjects" [value]="sub.id" [disabled]="isSubjectScheduledInExam(scheduleForm.classId, sub.id)">
                 {{ sub.name }} ({{ sub.code }}) - Full Marks: {{ sub.fullMarks }}
+                <ng-container *ngIf="getScheduledItemForSubject(scheduleForm.classId, sub.id) as scheduled">
+                  — [Already Scheduled: {{ formatExamDate(scheduled.examDate) }}]
+                </ng-container>
               </option>
             </select>
+          </div>
+
+          <!-- Conflict Warning Banner -->
+          <div *ngIf="getScheduledItemForSubject(scheduleForm.classId, scheduleForm.subjectId) as conflictSub" class="schedule-conflict-warning">
+            <app-icon name="alert-triangle" [size]="16" class="conflict-icon"></app-icon>
+            <div class="conflict-text">
+              <strong>Duplicate Subject Alert:</strong> {{ conflictSub.subjectName }} is already scheduled for {{ scheduleForm.className }} on {{ formatExamDate(conflictSub.examDate) }} ({{ conflictSub.startTime }}). A subject can only be scheduled once per examination term.
+            </div>
+          </div>
+
+          <div *ngIf="!getScheduledItemForSubject(scheduleForm.classId, scheduleForm.subjectId) && getTimeSlotClash(scheduleForm.classId, scheduleForm.examDate, scheduleForm.startTime) as clashSlot" class="schedule-conflict-warning">
+            <app-icon name="alert-triangle" [size]="16" class="conflict-icon"></app-icon>
+            <div class="conflict-text">
+              <strong>Time Slot Clash:</strong> {{ clashSlot.subjectName }} is already scheduled at {{ clashSlot.startTime }} on this date for {{ scheduleForm.className }}.
+            </div>
           </div>
 
           <div class="form-row-2">
@@ -1020,7 +1038,7 @@ interface ClassSubjectSchemeRow {
           <button type="button" class="btn btn-outline" (click)="isScheduleModalOpen = false">
             Cancel
           </button>
-          <button type="button" class="btn btn-primary" (click)="saveScheduleEntry()">
+          <button type="button" class="btn btn-primary" (click)="saveScheduleEntry()" [disabled]="isSubjectScheduledInExam(scheduleForm.classId, scheduleForm.subjectId) || !!getTimeSlotClash(scheduleForm.classId, scheduleForm.examDate, scheduleForm.startTime)">
             <app-icon name="plus" [size]="16"></app-icon>
             <span>Add to Timetable</span>
           </button>
@@ -2241,6 +2259,27 @@ interface ClassSubjectSchemeRow {
         color: #94a3b8;
       }
     }
+
+    .schedule-conflict-warning {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .schedule-conflict-warning .conflict-icon {
+      color: #dc2626;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .schedule-conflict-warning .conflict-text {
+      font-size: 0.82rem;
+      color: #991b1b;
+      line-height: 1.45;
+    }
   `]
 })
 export class ExamSetupComponent implements OnInit {
@@ -2264,7 +2303,7 @@ export class ExamSetupComponent implements OnInit {
   saveAssessmentScheme(classId: string, subjectId: string, scheme: any): void {
     try {
       localStorage.setItem(`sms_scheme_${classId}_${subjectId}`, JSON.stringify(scheme));
-    } catch {}
+    } catch { }
   }
 
   activeTab: SetupTab = 'terms';
@@ -2300,15 +2339,15 @@ export class ExamSetupComponent implements OnInit {
     instructions: string;
     isPublished: boolean;
   } = {
-    name: '',
-    term: 'First Term',
-    academicYear: '2026 - 2027',
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
-    branchId: 'br-01',
-    instructions: '',
-    isPublished: false
-  };
+      name: '',
+      term: 'First Term',
+      academicYear: '2026 - 2027',
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+      branchId: 'br-01',
+      instructions: '',
+      isPublished: false
+    };
 
   isScheduleModalOpen = false;
   scheduleForm: {
@@ -2324,18 +2363,18 @@ export class ExamSetupComponent implements OnInit {
     fullMarks: number;
     passMarks: number;
   } = {
-    classId: '',
-    className: '',
-    subjectId: '',
-    subjectName: '',
-    examDate: new Date().toISOString().split('T')[0],
-    day: 'Sunday',
-    startTime: '10:00 AM',
-    endTime: '01:00 PM',
-    roomNo: 'Room 301',
-    fullMarks: 100,
-    passMarks: 33
-  };
+      classId: '',
+      className: '',
+      subjectId: '',
+      subjectName: '',
+      examDate: new Date().toISOString().split('T')[0],
+      day: 'Sunday',
+      startTime: '10:00 AM',
+      endTime: '01:00 PM',
+      roomNo: 'Room 301',
+      fullMarks: 100,
+      passMarks: 33
+    };
 
   isDeleteModalOpen = false;
   selectedExamForDelete: Exam | null = null;
@@ -2522,9 +2561,9 @@ export class ExamSetupComponent implements OnInit {
 
   getRowSum(row: ClassSubjectSchemeRow): number {
     return (row.hasTheory ? row.theoryMax : 0) +
-           (row.hasMcq ? row.mcqMax : 0) +
-           (row.hasPractical ? row.practicalMax : 0) +
-           (row.hasViva ? row.vivaMax : 0);
+      (row.hasMcq ? row.mcqMax : 0) +
+      (row.hasPractical ? row.practicalMax : 0) +
+      (row.hasViva ? row.vivaMax : 0);
   }
 
   onRowFieldChanged(row: ClassSubjectSchemeRow) {
@@ -2946,13 +2985,52 @@ export class ExamSetupComponent implements OnInit {
   }
 
   // --- SCHEDULE / DATESHEET MODALS ---
+  getScheduledItemForSubject(classId: string, subjectId: string): ExamScheduleItem | undefined {
+    if (!classId || !subjectId) return undefined;
+    const subObj = this.subjects.find(s => s.id === subjectId);
+    const subName = subObj ? subObj.name.trim().toLowerCase() : '';
+    return this.schedules.find(s =>
+      s.examId === this.selectedScheduleExamId &&
+      s.classId === classId &&
+      (s.subjectId === subjectId || (subName && s.subjectName && s.subjectName.trim().toLowerCase() === subName))
+    );
+  }
+
+  isSubjectScheduledInExam(classId: string, subjectId: string): boolean {
+    return !!this.getScheduledItemForSubject(classId, subjectId);
+  }
+
+  getTimeSlotClash(classId: string, examDate: string, startTime: string): ExamScheduleItem | undefined {
+    if (!classId || !examDate || !startTime) return undefined;
+    const targetDate = examDate.split('T')[0];
+    const cleanTime = startTime.trim().toLowerCase();
+    return this.schedules.find(s =>
+      s.examId === this.selectedScheduleExamId &&
+      s.classId === classId &&
+      s.examDate && s.examDate.split('T')[0] === targetDate &&
+      s.startTime && s.startTime.trim().toLowerCase() === cleanTime
+    );
+  }
+
   onScheduleExamChange() {
     // Reactive refresh of filtered schedules
   }
 
   onScheduleClassChange() {
     const c = this.classes.find(x => x.id === this.scheduleForm.classId);
-    if (c) this.scheduleForm.className = c.name;
+    if (c) {
+      this.scheduleForm.className = c.name;
+      // If current subject is already scheduled for this newly selected class, auto-pick the first unscheduled subject
+      if (this.isSubjectScheduledInExam(this.scheduleForm.classId, this.scheduleForm.subjectId)) {
+        const availableSub = this.subjects.find(s => !this.isSubjectScheduledInExam(this.scheduleForm.classId, s.id));
+        if (availableSub) {
+          this.scheduleForm.subjectId = availableSub.id;
+          this.scheduleForm.subjectName = availableSub.name;
+          this.scheduleForm.fullMarks = availableSub.fullMarks;
+          this.scheduleForm.passMarks = availableSub.passMarks;
+        }
+      }
+    }
   }
 
   onScheduleSubjectChange() {
@@ -2974,21 +3052,28 @@ export class ExamSetupComponent implements OnInit {
 
   openAddScheduleModal() {
     const ex = this.exams.find(e => e.id === this.selectedScheduleExamId) || this.exams[0];
-    const c = this.classes[0];
-    const sub = this.subjects[0];
+    const defaultClass = (this.selectedScheduleClassId && this.selectedScheduleClassId !== 'ALL')
+      ? (this.classes.find(c => c.id === this.selectedScheduleClassId) || this.classes[0])
+      : this.classes[0];
+
+    const classId = defaultClass ? defaultClass.id : '';
+    const className = defaultClass ? defaultClass.name : 'Class Ten (10)';
+
+    // Find the first unscheduled subject for this class
+    const unscheduledSub = this.subjects.find(s => !this.isSubjectScheduledInExam(classId, s.id)) || this.subjects[0];
 
     this.scheduleForm = {
-      classId: c ? c.id : '',
-      className: c ? c.name : 'Class Ten (10)',
-      subjectId: sub ? sub.id : '',
-      subjectName: sub ? sub.name : 'General Mathematics',
-      examDate: ex ? ex.startDate : new Date().toISOString().split('T')[0],
+      classId: classId,
+      className: className,
+      subjectId: unscheduledSub ? unscheduledSub.id : '',
+      subjectName: unscheduledSub ? unscheduledSub.name : 'General Mathematics',
+      examDate: ex ? (ex.startDate ? ex.startDate.split('T')[0] : new Date().toISOString().split('T')[0]) : new Date().toISOString().split('T')[0],
       day: 'Sunday',
       startTime: '10:00 AM',
       endTime: '01:00 PM',
       roomNo: 'Room 301',
-      fullMarks: sub ? sub.fullMarks : 100,
-      passMarks: sub ? sub.passMarks : 33
+      fullMarks: unscheduledSub ? unscheduledSub.fullMarks : 100,
+      passMarks: unscheduledSub ? unscheduledSub.passMarks : 33
     };
     this.onScheduleDateChange();
     this.isScheduleModalOpen = true;
@@ -2997,6 +3082,26 @@ export class ExamSetupComponent implements OnInit {
   saveScheduleEntry() {
     if (!this.scheduleForm.subjectId || !this.scheduleForm.classId) {
       this.toast.error('Validation Error', 'Please select class and subject paper.');
+      return;
+    }
+
+    // 1. Guard against duplicate subject in the same class and exam
+    const existingSubject = this.getScheduledItemForSubject(this.scheduleForm.classId, this.scheduleForm.subjectId);
+    if (existingSubject) {
+      this.toast.error(
+        'Duplicate Subject Conflict',
+        `${this.scheduleForm.subjectName} is already scheduled for ${this.scheduleForm.className} on ${this.formatExamDate(existingSubject.examDate)}. A subject can only be scheduled once per examination term.`
+      );
+      return;
+    }
+
+    // 2. Guard against time slot clash
+    const timeClash = this.getTimeSlotClash(this.scheduleForm.classId, this.scheduleForm.examDate, this.scheduleForm.startTime);
+    if (timeClash) {
+      this.toast.error(
+        'Time Slot Clash',
+        `Class '${this.scheduleForm.className}' already has '${timeClash.subjectName}' scheduled on ${this.formatExamDate(this.scheduleForm.examDate)} at ${this.scheduleForm.startTime}.`
+      );
       return;
     }
 
