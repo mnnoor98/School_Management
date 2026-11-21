@@ -44,8 +44,8 @@ public class AttendanceService : IAttendanceService
             query = query.Where(a => allowedStudentIds.Contains(a.StudentId));
         }
 
-        if (!string.IsNullOrEmpty(classId)) query = query.Where(a => a.ClassId == classId);
-        if (!string.IsNullOrEmpty(sectionId)) query = query.Where(a => a.SectionId == sectionId);
+        if (!string.IsNullOrEmpty(classId) && !classId.Equals("ALL", StringComparison.OrdinalIgnoreCase)) query = query.Where(a => a.ClassId == classId);
+        if (!string.IsNullOrEmpty(sectionId) && !sectionId.Equals("ALL", StringComparison.OrdinalIgnoreCase)) query = query.Where(a => a.SectionId == sectionId);
 
         return await query
             .OrderBy(a => a.RollNo)

@@ -8,7 +8,7 @@ import { SystemStoreService } from '../../core/services/stores/system-store.serv
 import { AuthService } from '../../core/services/auth.service';
 import { CampusSessionService } from '../../core/services/campus-session.service';
 import { ToastService } from '../../core/services/toast.service';
-import { AttendanceRecord, AttendanceCorrectionLog, SchoolClass, Section, Student, AcademicHoliday, WeekendSettings } from '../../core/models';
+import { AttendanceRecord, AttendanceCorrectionLog, SchoolClass, Section, Student, AcademicHoliday, WeekendSettings, SpecialWorkingDay } from '../../core/models';
 import { IconComponent } from '../../shared/components/icon.component';
 import { ModalComponent } from '../../shared/components/modal.component';
 
@@ -77,24 +77,24 @@ interface StudentMonthlyStat {
       <!-- KPI METRIC CARDS -->
       <div class="kpi-grid mb-4 no-print">
         <div class="kpi-card">
-          <div class="kpi-icon-wrap" [class.bg-slate]="isFutureDate(selectedDate)" [class.bg-emerald]="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && hasSubmittedAttendance" [class.bg-amber]="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && !hasSubmittedAttendance" [class.bg-rose]="getDateHoliday(selectedDate)" [class.bg-indigo]="!getDateHoliday(selectedDate) && isDateWeekend(selectedDate)">
-            <app-icon [name]="isFutureDate(selectedDate) ? 'clock' : (getDateHoliday(selectedDate) ? 'star' : (isDateWeekend(selectedDate) ? 'calendar' : (hasSubmittedAttendance ? 'check' : 'alert-circle')))" [size]="22" [class.text-emerald]="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && hasSubmittedAttendance" [class.text-amber]="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && !hasSubmittedAttendance" [class.text-rose]="getDateHoliday(selectedDate)" [class.text-indigo]="!getDateHoliday(selectedDate) && isDateWeekend(selectedDate)"></app-icon>
+          <div class="kpi-icon-wrap" [class.bg-slate]="isFutureDate(selectedDate)" [class.bg-emerald]="!isFutureDate(selectedDate) && (!isDateHolidayOrWeekend(selectedDate) || isSpecialWorkingDay(selectedDate)) && hasSubmittedAttendance" [class.bg-amber]="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && !hasSubmittedAttendance" [class.bg-rose]="!isSpecialWorkingDay(selectedDate) && getDateHoliday(selectedDate)" [class.bg-indigo]="!isSpecialWorkingDay(selectedDate) && !getDateHoliday(selectedDate) && isDateWeekend(selectedDate)">
+            <app-icon [name]="isFutureDate(selectedDate) ? 'clock' : (!isSpecialWorkingDay(selectedDate) && getDateHoliday(selectedDate) ? 'star' : (!isSpecialWorkingDay(selectedDate) && isDateWeekend(selectedDate) ? 'calendar' : (hasSubmittedAttendance ? 'check' : 'alert-circle')))" [size]="22" [class.text-emerald]="!isFutureDate(selectedDate) && (!isDateHolidayOrWeekend(selectedDate) || isSpecialWorkingDay(selectedDate)) && hasSubmittedAttendance" [class.text-amber]="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && !hasSubmittedAttendance" [class.text-rose]="!isSpecialWorkingDay(selectedDate) && getDateHoliday(selectedDate)" [class.text-indigo]="!isSpecialWorkingDay(selectedDate) && !getDateHoliday(selectedDate) && isDateWeekend(selectedDate)"></app-icon>
           </div>
           <div class="kpi-details">
             <span class="kpi-label">{{ activeViewMode === 'daily' ? 'Selected Day Status' : 'Today\'s Present Rate' }}</span>
             <div class="kpi-val-row">
               <span class="kpi-number text-slate-400" *ngIf="isFutureDate(selectedDate)">Future Date</span>
               <span class="kpi-number text-amber" *ngIf="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && !hasSubmittedAttendance" style="font-size: 1.25rem;">Not Recorded</span>
-              <span class="kpi-number" *ngIf="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && hasSubmittedAttendance">{{ todayPresentPercentage }}%</span>
-              <span class="kpi-number text-rose" *ngIf="getDateHoliday(selectedDate)" style="font-size: 1.25rem;">Holiday</span>
-              <span class="kpi-number text-indigo" *ngIf="!getDateHoliday(selectedDate) && isDateWeekend(selectedDate)" style="font-size: 1.25rem;">Weekend</span>
-              <span class="kpi-trend text-emerald" *ngIf="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && hasSubmittedAttendance">Active Roster</span>
+              <span class="kpi-number" *ngIf="!isFutureDate(selectedDate) && (!isDateHolidayOrWeekend(selectedDate) || isSpecialWorkingDay(selectedDate)) && hasSubmittedAttendance">{{ todayPresentPercentage }}%</span>
+              <span class="kpi-number text-rose" *ngIf="!isSpecialWorkingDay(selectedDate) && getDateHoliday(selectedDate)" style="font-size: 1.25rem;">Holiday</span>
+              <span class="kpi-number text-indigo" *ngIf="!isSpecialWorkingDay(selectedDate) && !getDateHoliday(selectedDate) && isDateWeekend(selectedDate)" style="font-size: 1.25rem;">Weekend</span>
+              <span class="kpi-trend text-emerald" *ngIf="!isFutureDate(selectedDate) && (!isDateHolidayOrWeekend(selectedDate) || isSpecialWorkingDay(selectedDate)) && hasSubmittedAttendance">Active Roster</span>
             </div>
             <span class="kpi-subtext" *ngIf="isFutureDate(selectedDate)">Date beyond current system date</span>
             <span class="kpi-subtext text-amber-800" *ngIf="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && !hasSubmittedAttendance">Roll-call not submitted yet</span>
-            <span class="kpi-subtext" *ngIf="getDateHoliday(selectedDate)">{{ getDateHoliday(selectedDate)?.title }}</span>
-            <span class="kpi-subtext" *ngIf="!getDateHoliday(selectedDate) && isDateWeekend(selectedDate)">Weekly Weekend Recess</span>
-            <span class="kpi-subtext" *ngIf="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && hasSubmittedAttendance">{{ todayPresentCount }} students verified present</span>
+            <span class="kpi-subtext" *ngIf="!isSpecialWorkingDay(selectedDate) && getDateHoliday(selectedDate)">{{ getDateHoliday(selectedDate)?.title }}</span>
+            <span class="kpi-subtext" *ngIf="!isSpecialWorkingDay(selectedDate) && !getDateHoliday(selectedDate) && isDateWeekend(selectedDate)">Weekly Weekend Recess</span>
+            <span class="kpi-subtext" *ngIf="!isFutureDate(selectedDate) && (!isDateHolidayOrWeekend(selectedDate) || isSpecialWorkingDay(selectedDate)) && hasSubmittedAttendance">{{ todayPresentCount }} students verified present</span>
           </div>
         </div>
 
@@ -105,16 +105,16 @@ interface StudentMonthlyStat {
           <div class="kpi-details">
             <span class="kpi-label">Absentees Count</span>
             <div class="kpi-val-row">
-              <span class="kpi-number text-muted" *ngIf="isFutureDate(selectedDate) || (!isDateHolidayOrWeekend(selectedDate) && !hasSubmittedAttendance)">—</span>
-              <span class="kpi-number text-rose" *ngIf="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && hasSubmittedAttendance">{{ todayAbsentCount }}</span>
+              <span class="kpi-number text-muted" *ngIf="isFutureDate(selectedDate) || (!isSpecialWorkingDay(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && !hasSubmittedAttendance)">—</span>
+              <span class="kpi-number text-rose" *ngIf="!isFutureDate(selectedDate) && (!isDateHolidayOrWeekend(selectedDate) || isSpecialWorkingDay(selectedDate)) && hasSubmittedAttendance">{{ todayAbsentCount }}</span>
               <span class="kpi-badge-pill pill-rose" *ngIf="hasSubmittedAttendance && todayAbsentCount > 0">Action Req.</span>
-              <span class="kpi-badge-pill pill-emerald" *ngIf="todayAbsentCount === 0 && isDateHolidayOrWeekend(selectedDate)">Holiday Exemption</span>
+              <span class="kpi-badge-pill pill-emerald" *ngIf="todayAbsentCount === 0 && !isSpecialWorkingDay(selectedDate) && isDateHolidayOrWeekend(selectedDate)">Holiday Exemption</span>
               <span class="kpi-badge-pill pill-neutral" *ngIf="!hasSubmittedAttendance && !isDateHolidayOrWeekend(selectedDate)">Unmarked</span>
             </div>
             <span class="kpi-subtext" *ngIf="isFutureDate(selectedDate)">Future date</span>
-            <span class="kpi-subtext" *ngIf="isDateHolidayOrWeekend(selectedDate)">No absence penalized on non-work days</span>
+            <span class="kpi-subtext" *ngIf="!isSpecialWorkingDay(selectedDate) && isDateHolidayOrWeekend(selectedDate)">No absence penalized on non-work days</span>
             <span class="kpi-subtext" *ngIf="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && !hasSubmittedAttendance">No attendance session submitted</span>
-            <span class="kpi-subtext" *ngIf="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && hasSubmittedAttendance">{{ todayAbsentCount }} students missing</span>
+            <span class="kpi-subtext" *ngIf="!isFutureDate(selectedDate) && (!isDateHolidayOrWeekend(selectedDate) || isSpecialWorkingDay(selectedDate)) && hasSubmittedAttendance">{{ todayAbsentCount }} students missing</span>
           </div>
         </div>
 
@@ -125,14 +125,14 @@ interface StudentMonthlyStat {
           <div class="kpi-details">
             <span class="kpi-label">Late Arrivals</span>
             <div class="kpi-val-row">
-              <span class="kpi-number text-muted" *ngIf="isFutureDate(selectedDate) || (!isDateHolidayOrWeekend(selectedDate) && !hasSubmittedAttendance)">—</span>
-              <span class="kpi-number text-amber" *ngIf="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && hasSubmittedAttendance">{{ todayLateCount }}</span>
-              <span class="kpi-badge-pill pill-amber" *ngIf="hasSubmittedAttendance && !isDateHolidayOrWeekend(selectedDate) && todayLateCount > 0">Grace Period</span>
+              <span class="kpi-number text-muted" *ngIf="isFutureDate(selectedDate) || (!isSpecialWorkingDay(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && !hasSubmittedAttendance)">—</span>
+              <span class="kpi-number text-amber" *ngIf="!isFutureDate(selectedDate) && (!isDateHolidayOrWeekend(selectedDate) || isSpecialWorkingDay(selectedDate)) && hasSubmittedAttendance">{{ todayLateCount }}</span>
+              <span class="kpi-badge-pill pill-amber" *ngIf="hasSubmittedAttendance && todayLateCount > 0">Grace Period</span>
             </div>
             <span class="kpi-subtext" *ngIf="isFutureDate(selectedDate)">Future date</span>
-            <span class="kpi-subtext" *ngIf="isDateHolidayOrWeekend(selectedDate)">Assembly suspended</span>
+            <span class="kpi-subtext" *ngIf="!isSpecialWorkingDay(selectedDate) && isDateHolidayOrWeekend(selectedDate)">Assembly suspended</span>
             <span class="kpi-subtext" *ngIf="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && !hasSubmittedAttendance">No attendance session submitted</span>
-            <span class="kpi-subtext" *ngIf="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && hasSubmittedAttendance">Marked after assembly</span>
+            <span class="kpi-subtext" *ngIf="!isFutureDate(selectedDate) && (!isDateHolidayOrWeekend(selectedDate) || isSpecialWorkingDay(selectedDate)) && hasSubmittedAttendance">Marked after assembly</span>
           </div>
         </div>
 
@@ -219,7 +219,7 @@ interface StudentMonthlyStat {
 
               <div class="filter-item">
                 <label class="filter-label">Section</label>
-                <select [(ngModel)]="selectedSectionId" (change)="loadAttendanceData()" class="form-select form-select-sm">
+                <select [(ngModel)]="selectedSectionId" (change)="onSectionChange()" class="form-select form-select-sm">
                   <option value="ALL">All Sections</option>
                   <option *ngFor="let s of availableSections" [value]="s.id">{{ s.name }}</option>
                 </select>
@@ -293,22 +293,25 @@ interface StudentMonthlyStat {
             <span *ngIf="isFutureDate(selectedDate)" class="status-summary-tag tag-future">
               Future Date (Restricted)
             </span>
-            <span *ngIf="getDateHoliday(selectedDate)" class="status-summary-tag tag-holiday">
+            <span *ngIf="isSpecialWorkingDay(selectedDate)" class="status-summary-tag tag-special">
+              Special Working Day
+            </span>
+            <span *ngIf="!isSpecialWorkingDay(selectedDate) && getDateHoliday(selectedDate)" class="status-summary-tag tag-holiday">
               Holiday: <strong>{{ getDateHoliday(selectedDate)?.title }}</strong>
             </span>
-            <span *ngIf="!getDateHoliday(selectedDate) && isDateWeekend(selectedDate)" class="status-summary-tag tag-weekend">
+            <span *ngIf="!isSpecialWorkingDay(selectedDate) && !getDateHoliday(selectedDate) && isDateWeekend(selectedDate)" class="status-summary-tag tag-weekend">
               Weekly Weekend: <strong>Recess</strong>
             </span>
-            <span *ngIf="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && !hasSubmittedAttendance" class="status-summary-tag tag-unmarked">
+            <span *ngIf="!isFutureDate(selectedDate) && (!isDateHolidayOrWeekend(selectedDate) || isSpecialWorkingDay(selectedDate)) && !hasSubmittedAttendance" class="status-summary-tag tag-unmarked">
               Status: <strong>Session Not Recorded</strong>
             </span>
-            <span *ngIf="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && hasSubmittedAttendance" class="status-summary-tag tag-present">
+            <span *ngIf="!isFutureDate(selectedDate) && (!isDateHolidayOrWeekend(selectedDate) || isSpecialWorkingDay(selectedDate)) && hasSubmittedAttendance" class="status-summary-tag tag-present">
               Present: <strong>{{ dailyFilteredStats.present }}</strong>
             </span>
-            <span *ngIf="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && hasSubmittedAttendance" class="status-summary-tag tag-absent">
+            <span *ngIf="!isFutureDate(selectedDate) && (!isDateHolidayOrWeekend(selectedDate) || isSpecialWorkingDay(selectedDate)) && hasSubmittedAttendance" class="status-summary-tag tag-absent">
               Absent: <strong>{{ dailyFilteredStats.absent }}</strong>
             </span>
-            <span *ngIf="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && hasSubmittedAttendance" class="status-summary-tag tag-late">
+            <span *ngIf="!isFutureDate(selectedDate) && (!isDateHolidayOrWeekend(selectedDate) || isSpecialWorkingDay(selectedDate)) && hasSubmittedAttendance" class="status-summary-tag tag-late">
               Late: <strong>{{ dailyFilteredStats.late }}</strong>
             </span>
             <span class="status-summary-tag tag-total">
@@ -335,8 +338,28 @@ interface StudentMonthlyStat {
           </button>
         </div>
 
+        <!-- SPECIAL WORKING DAY NOTICE BANNER -->
+        <div *ngIf="isSpecialWorkingDay(selectedDate)" class="alert-notice-box notice-special-day mb-3">
+          <div class="alert-notice-icon">
+            <app-icon name="check-circle" [size]="20" class="text-emerald"></app-icon>
+          </div>
+          <div class="alert-notice-content">
+            <div class="alert-notice-title font-bold text-emerald">
+              Special Working Day Active (বিশেষ কার্যদিবস সচল)
+              <span class="ref-pill" *ngIf="getSpecialWorkingDay(selectedDate)?.orderReference">
+                {{ getSpecialWorkingDay(selectedDate)?.orderReference }}
+              </span>
+            </div>
+            <div class="alert-notice-desc text-xs text-muted">
+              {{ selectedDate }} তারিখে সাধারণ সাপ্তাহিক ছুটি বা অবকাশ শিথিল করে সরকারি নির্দেশনা / ক্ষতিপূরণ পাঠদান ও নিয়মিত হাজিরা সচল রয়েছে।
+              {{ getSpecialWorkingDay(selectedDate)?.reason ? '(' + getSpecialWorkingDay(selectedDate)?.reason + ')' : '' }}
+            </div>
+          </div>
+          <span class="badge-special-chip">Special Day</span>
+        </div>
+
         <!-- UNMARKED SESSION NOTICE BANNER (ZERO AUTO-DATA) -->
-        <div *ngIf="!isFutureDate(selectedDate) && !isDateHolidayOrWeekend(selectedDate) && !hasSubmittedAttendance" class="alert-notice-box notice-unmarked mb-3">
+        <div *ngIf="!isFutureDate(selectedDate) && (!isDateHolidayOrWeekend(selectedDate) || isSpecialWorkingDay(selectedDate)) && !hasSubmittedAttendance" class="alert-notice-box notice-unmarked mb-3">
           <div class="alert-notice-icon">
             <app-icon name="alert-circle" [size]="20" class="text-amber-600"></app-icon>
           </div>
@@ -355,7 +378,7 @@ interface StudentMonthlyStat {
         </div>
 
         <!-- HOLIDAY OR WEEKEND NOTICE BANNER -->
-        <div *ngIf="getDateHoliday(selectedDate)" class="alert-notice-box notice-holiday mb-3">
+        <div *ngIf="!isSpecialWorkingDay(selectedDate) && getDateHoliday(selectedDate)" class="alert-notice-box notice-holiday mb-3">
           <div class="alert-notice-icon">
             <app-icon name="star" [size]="20" class="text-rose"></app-icon>
           </div>
@@ -370,7 +393,7 @@ interface StudentMonthlyStat {
           <span class="badge-holiday-chip">{{ getDateHoliday(selectedDate)?.type }}</span>
         </div>
 
-        <div *ngIf="!getDateHoliday(selectedDate) && isDateWeekend(selectedDate)" class="alert-notice-box notice-weekend mb-3">
+        <div *ngIf="!isSpecialWorkingDay(selectedDate) && !getDateHoliday(selectedDate) && isDateWeekend(selectedDate)" class="alert-notice-box notice-weekend mb-3">
           <div class="alert-notice-icon">
             <app-icon name="calendar" [size]="20" class="text-indigo"></app-icon>
           </div>
@@ -1443,6 +1466,36 @@ interface StudentMonthlyStat {
       background: #eef2ff;
       border-color: #c7d2fe;
     }
+    .notice-special-day {
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+    }
+    .badge-special-chip {
+      background: #d1fae5;
+      color: #065f46;
+      font-weight: 700;
+      font-size: 0.725rem;
+      padding: 4px 10px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      border: 1px solid #a7f3d0;
+    }
+    .tag-special {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+    .ref-pill {
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: #ffffff;
+      border: 1px solid #a7f3d0;
+      color: #047857;
+      padding: 2px 8px;
+      border-radius: 6px;
+      margin-left: 8px;
+      display: inline-block;
+    }
     .alert-notice-icon {
       flex-shrink: 0;
     }
@@ -2095,6 +2148,22 @@ export class AttendanceReportsComponent implements OnInit {
   monthlyStats: StudentMonthlyStat[] = [];
   correctionLogs: AttendanceCorrectionLog[] = [];
   hasSubmittedAttendance = false;
+  specialWorkingDays: SpecialWorkingDay[] = [];
+
+  getSpecialWorkingDay(dateStr: string = this.selectedDate): SpecialWorkingDay | null {
+    if (!dateStr) return null;
+    const target = dateStr.split('T')[0];
+    return this.specialWorkingDays.find(s => s.date === target || (s.date && s.date.startsWith(target))) || null;
+  }
+
+  isSpecialWorkingDay(dateStr: string = this.selectedDate): boolean {
+    return !!this.getSpecialWorkingDay(dateStr);
+  }
+
+  isSpecialWorkingDayByDay(day: number): boolean {
+    const dayStr = `${this.selectedMonthYear}-${String(day).padStart(2, '0')}`;
+    return this.isSpecialWorkingDay(dayStr);
+  }
 
   get systemDate(): string {
     const d = new Date();
@@ -2192,7 +2261,7 @@ export class AttendanceReportsComponent implements OnInit {
       this.selectedClassId = this.classes[0].id;
     }
 
-    // Subscribe to weekend settings and holidays
+    // Subscribe to weekend settings, holidays and special working days
     this.attendanceStore.getWeekendSettings$().subscribe(settings => {
       if (settings) {
         this.weekendSettings = settings;
@@ -2213,10 +2282,27 @@ export class AttendanceReportsComponent implements OnInit {
       }
     });
 
+    this.attendanceStore.getSpecialWorkingDays$().subscribe((swdList: SpecialWorkingDay[]) => {
+      if (swdList) {
+        this.specialWorkingDays = swdList;
+        this.loadMonthlyRangeData();
+        this.loadAttendanceData();
+        this.cdr.markForCheck();
+      }
+    });
+
     this.attendanceStore.fetchWeekendSettings().subscribe();
-    this.attendanceStore.fetchHolidays().subscribe(hList => {
+    this.attendanceStore.fetchHolidays().subscribe((hList: AcademicHoliday[]) => {
       if (hList && hList.length > 0) {
         this.holidays = hList;
+        this.loadMonthlyRangeData();
+        this.loadAttendanceData();
+        this.cdr.markForCheck();
+      }
+    });
+    this.attendanceStore.fetchSpecialWorkingDays().subscribe((swdList: SpecialWorkingDay[]) => {
+      if (swdList && swdList.length > 0) {
+        this.specialWorkingDays = swdList;
         this.loadMonthlyRangeData();
         this.loadAttendanceData();
         this.cdr.markForCheck();
@@ -2238,9 +2324,11 @@ export class AttendanceReportsComponent implements OnInit {
       this.sections = s || [];
       this.allStudents = st || [];
       if (!this.selectedClassId && this.classes.length > 0) {
-        this.selectedClassId = this.classes[0].id;
+        const def = this.classes.find(cls => cls.name.toLowerCase().includes('two') || cls.id === 'cls-53ca747c') || this.classes[0];
+        this.selectedClassId = def.id;
       }
       this.loadAttendanceData();
+      this.loadMonthlyRangeData();
       this.cdr.markForCheck();
     } catch (e) {
       console.warn('Attendance reports init sync error:', e);
@@ -2262,6 +2350,12 @@ export class AttendanceReportsComponent implements OnInit {
   onClassChange() {
     this.selectedSectionId = 'ALL';
     this.loadAttendanceData();
+    this.loadMonthlyRangeData();
+  }
+
+  onSectionChange() {
+    this.loadAttendanceData();
+    this.loadMonthlyRangeData();
   }
 
   setViewMode(mode: 'daily' | 'monthly' | 'matrix' | 'chronic' | 'corrections') {
@@ -2282,8 +2376,9 @@ export class AttendanceReportsComponent implements OnInit {
       this.selectedDate = this.systemDate;
     }
 
-    const holiday = this.getDateHoliday(this.selectedDate);
-    const isWeekendDay = this.isDateWeekend(this.selectedDate);
+    const isSpecialDay = this.isSpecialWorkingDay(this.selectedDate);
+    const holiday = isSpecialDay ? null : this.getDateHoliday(this.selectedDate);
+    const isWeekendDay = isSpecialDay ? false : this.isDateWeekend(this.selectedDate);
     const isFuture = this.isFutureDate(this.selectedDate);
 
     this.attendanceStore.fetchAttendanceRecords(this.selectedClassId, this.selectedSectionId, this.selectedDate).subscribe(records => {
@@ -2302,8 +2397,8 @@ export class AttendanceReportsComponent implements OnInit {
           classId: st.classId,
           sectionId: st.sectionId,
           status: (holiday ? 'Holiday' : (isWeekendDay ? 'Weekend' : 'Unmarked')) as any,
-          markedBy: holiday ? 'Academic Calendar' : (isWeekendDay ? 'Institutional Weekend' : (isFuture ? 'Future Date' : 'Not Recorded')),
-          remark: holiday ? `Holiday: ${holiday.title}` : (isWeekendDay ? 'Weekly Weekend' : (isFuture ? 'Future session' : 'Pending roll-call')),
+          markedBy: holiday ? 'Academic Calendar' : (isWeekendDay ? 'Institutional Weekend' : (isSpecialDay ? 'Special Working Day (Pending)' : (isFuture ? 'Future Date' : 'Not Recorded'))),
+          remark: holiday ? `Holiday: ${holiday.title}` : (isWeekendDay ? 'Weekly Weekend' : (isSpecialDay ? 'Govt / Makeup Working Day' : (isFuture ? 'Future session' : 'Pending roll-call'))),
           student: st
         };
       });
@@ -2362,13 +2457,15 @@ export class AttendanceReportsComponent implements OnInit {
       let recordedSessions = 0;
 
       for (let day = 1; day <= totalDaysInMonth; day++) {
-        if (this.isHoliday(day)) {
-          dayStatuses[day] = 'Holiday';
-          continue;
-        }
-        if (this.isWeekend(day)) {
-          dayStatuses[day] = 'Weekend';
-          continue;
+        if (!this.isSpecialWorkingDayByDay(day)) {
+          if (this.isHoliday(day)) {
+            dayStatuses[day] = 'Holiday';
+            continue;
+          }
+          if (this.isWeekend(day)) {
+            dayStatuses[day] = 'Weekend';
+            continue;
+          }
         }
         if (this.isFutureDay(day)) {
           delete dayStatuses[day];
@@ -2455,14 +2552,17 @@ export class AttendanceReportsComponent implements OnInit {
 
   // KPI Computations
   get isSelectedDateNonInstructional(): boolean {
+    if (this.isSpecialWorkingDay(this.selectedDate)) return false;
     return !!this.getDateHoliday(this.selectedDate) || this.isDateWeekend(this.selectedDate);
   }
 
   get isSelectedDateHoliday(): boolean {
+    if (this.isSpecialWorkingDay(this.selectedDate)) return false;
     return !!this.getDateHoliday(this.selectedDate);
   }
 
   get isSelectedDateWeekend(): boolean {
+    if (this.isSpecialWorkingDay(this.selectedDate)) return false;
     return this.isDateWeekend(this.selectedDate);
   }
 
@@ -2686,6 +2786,7 @@ export class AttendanceReportsComponent implements OnInit {
   }
 
   isWeekend(day: number): boolean {
+    if (this.isSpecialWorkingDayByDay(day)) return false;
     const [year, month] = this.selectedMonthYear.split('-').map(Number);
     const date = new Date(year, month - 1, day);
     const d = date.getDay();
@@ -2695,12 +2796,20 @@ export class AttendanceReportsComponent implements OnInit {
 
   isDateWeekend(dateStr: string): boolean {
     if (!dateStr) return false;
+    if (this.isSpecialWorkingDay(dateStr)) return false;
+    const parts = dateStr.split('T')[0].split('-').map(Number);
+    if (parts.length === 3) {
+      const d = new Date(parts[0], parts[1] - 1, parts[2]).getDay();
+      const days = this.weekendSettings?.weekendDays || [5, 6];
+      return days.includes(d);
+    }
     const d = new Date(dateStr).getDay();
     const days = this.weekendSettings?.weekendDays || [5, 6];
     return days.includes(d);
   }
 
   isDateHolidayOrWeekend(dateStr: string): boolean {
+    if (this.isSpecialWorkingDay(dateStr)) return false;
     return !!this.getDateHoliday(dateStr) || this.isDateWeekend(dateStr);
   }
 
@@ -2711,6 +2820,7 @@ export class AttendanceReportsComponent implements OnInit {
   }
 
   isHoliday(day: number): boolean {
+    if (this.isSpecialWorkingDayByDay(day)) return false;
     const dayStr = `${this.selectedMonthYear}-${String(day).padStart(2, '0')}`;
     return this.holidays.some(h => {
       if (!h.isActive) return false;
@@ -2722,6 +2832,7 @@ export class AttendanceReportsComponent implements OnInit {
 
   getDateHoliday(dateStr: string): AcademicHoliday | null {
     if (!dateStr) return null;
+    if (this.isSpecialWorkingDay(dateStr)) return null;
     const target = dateStr.split('T')[0];
     return this.holidays.find(h => {
       if (!h.isActive) return false;
@@ -2784,6 +2895,7 @@ export class AttendanceReportsComponent implements OnInit {
   }
 
   isNonInstructionalDay(day: number): boolean {
+    if (this.isSpecialWorkingDayByDay(day)) return false;
     return this.isWeekend(day) || this.isHoliday(day);
   }
 
@@ -2798,13 +2910,15 @@ export class AttendanceReportsComponent implements OnInit {
       this.toast.warning('Future Date Restricted', `Day ${day} is in the future. Attendance cannot be recorded or edited for future dates.`);
       return;
     }
-    if (this.isHoliday(day)) {
-      this.toast.info('Academic Holiday', `Day ${day} is marked as "${this.getHolidayName(day)}". Attendance cannot be marked on holidays.`);
-      return;
-    }
-    if (this.isWeekend(day)) {
-      this.toast.info('Weekly Weekend', `Day ${day} is scheduled as an institutional weekend.`);
-      return;
+    if (!this.isSpecialWorkingDayByDay(day)) {
+      if (this.isHoliday(day)) {
+        this.toast.info('Academic Holiday', `Day ${day} is marked as "${this.getHolidayName(day)}". Attendance cannot be marked on holidays.`);
+        return;
+      }
+      if (this.isWeekend(day)) {
+        this.toast.info('Weekly Weekend', `Day ${day} is scheduled as an institutional weekend.`);
+        return;
+      }
     }
 
     const currentStatus = stat.dayStatuses[day] || 'Present';
