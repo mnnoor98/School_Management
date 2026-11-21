@@ -10,7 +10,7 @@ import { StudentStoreService } from '../../core/services/stores/student-store.se
 import { CampusSessionService } from '../../core/services/campus-session.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
-import { SchoolClass, Section, Student, AttendanceRecord, User } from '../../core/models';
+import { SchoolClass, Section, Student, AttendanceRecord, User, AcademicHoliday, WeekendSettings } from '../../core/models';
 import { IconComponent } from '../../shared/components/icon.component';
 import { ModalComponent } from '../../shared/components/modal.component';
 
@@ -83,8 +83,8 @@ export interface AttendanceRowItem {
               type="button"
               class="btn btn-outline"
               (click)="markAll('Present')"
-              [disabled]="isLoading || attendanceRows.length === 0"
-              title="Mark all students as Present"
+              [disabled]="isLoading || isAttendanceClosed || attendanceRows.length === 0"
+              [title]="isAttendanceClosed ? 'Attendance entry is disabled on ' + closedReason : 'Mark all students as Present'"
             >
               <app-icon name="check-square" [size]="16" class="text-success"></app-icon>
               <span>All Present</span>
@@ -94,8 +94,8 @@ export interface AttendanceRowItem {
               type="button"
               class="btn btn-outline"
               (click)="markAll('Absent')"
-              [disabled]="isLoading || attendanceRows.length === 0"
-              title="Mark all students as Absent"
+              [disabled]="isLoading || isAttendanceClosed || attendanceRows.length === 0"
+              [title]="isAttendanceClosed ? 'Attendance entry is disabled on ' + closedReason : 'Mark all students as Absent'"
             >
               <app-icon name="x-circle" [size]="16" class="text-danger"></app-icon>
               <span>All Absent</span>
@@ -106,11 +106,13 @@ export interface AttendanceRowItem {
             type="button"
             class="btn btn-primary save-btn"
             (click)="saveAttendance()"
-            [disabled]="isLoading || isSaving || attendanceRows.length === 0"
+            [disabled]="isLoading || isSaving || isAttendanceClosed || attendanceRows.length === 0"
+            [title]="isAttendanceClosed ? 'Attendance entry is closed on ' + closedReason : 'Save Attendance Register'"
           >
-            <app-icon *ngIf="!isSaving" name="check" [size]="18"></app-icon>
+            <app-icon *ngIf="!isSaving && !isAttendanceClosed" name="check" [size]="18"></app-icon>
+            <app-icon *ngIf="isAttendanceClosed" name="shield-check" [size]="18"></app-icon>
             <app-icon *ngIf="isSaving" name="loader" [size]="18" class="spin-icon"></app-icon>
-            <span>{{ isSaving ? 'Saving Register...' : 'Save Attendance Register' }}</span>
+            <span>{{ isSaving ? 'Saving Register...' : (isAttendanceClosed ? 'Entry Closed (' + (closedType || 'Off') + ')' : 'Save Attendance Register') }}</span>
           </button>
         </div>
       </div>
@@ -121,14 +123,22 @@ export interface AttendanceRowItem {
           <div class="filter-grid">
             <!-- DATE PICKER -->
             <div class="form-group mb-0">
-              <label class="form-label d-flex justify-between">
-                <span>Attendance Date <span class="required">*</span></span>
+              <label class="form-label d-flex justify-between items-center">
+                <span class="d-flex items-center gap-2">
+                  <span>Attendance Date <span class="required">*</span></span>
+                  <span *ngIf="isAttendanceClosed" class="closed-pill-tag" [class.pill-holiday]="getDateHoliday()" [class.pill-weekend]="!getDateHoliday()">
+                    <app-icon [name]="getDateHoliday() ? 'calendar-clock' : 'coffee'" [size]="12"></app-icon>
+                    <span>{{ getDateHoliday() ? 'Holiday' : 'Weekend' }}</span>
+                  </span>
+                </span>
                 <button type="button" class="btn-link-today" (click)="setToday()">Today</button>
               </label>
               <div class="input-icon-wrapper">
                 <input
                   type="date"
                   class="form-control"
+                  [class.input-holiday]="getDateHoliday()"
+                  [class.input-weekend]="!getDateHoliday() && isAttendanceClosed"
                   [(ngModel)]="selectedDate"
                   [max]="todayDate"
                   (change)="onDateOrClassChange()"
@@ -186,6 +196,30 @@ export interface AttendanceRowItem {
         </div>
       </div>
 
+      <!-- ATTENDANCE CLOSED / WEEKEND / HOLIDAY BANNER -->
+      <div class="card mb-4 attendance-closed-banner" *ngIf="isAttendanceClosed" [class.banner-holiday]="getDateHoliday()" [class.banner-weekend]="!getDateHoliday()">
+        <div class="acb-wrap">
+          <div class="acb-icon" [class.acb-holiday]="getDateHoliday()" [class.acb-weekend]="!getDateHoliday()">
+            <app-icon [name]="getDateHoliday() ? 'calendar-clock' : 'coffee'" [size]="32"></app-icon>
+          </div>
+          <div class="acb-body">
+            <div class="acb-header">
+              <span class="acb-tag" [class.tag-holiday]="getDateHoliday()" [class.tag-weekend]="!getDateHoliday()">
+                {{ getDateHoliday() ? 'OFFICIAL HOLIDAY' : 'WEEKLY WEEKEND' }}
+              </span>
+              <h4 class="acb-title">{{ closedReason }}</h4>
+            </div>
+            <p class="acb-desc">
+              {{ closedReasonBangla }}
+            </p>
+            <div class="acb-footer">
+              <app-icon name="alert-circle" [size]="15"></app-icon>
+              <span>এই দিনে সাধারণ পাঠদান বন্ধ থাকায় হাজিরা গ্রহণ ও পরিবর্তন অপশন বন্ধ রাখা হয়েছে। অ্যাকাডেমিক কার্যদিবস (রবিবার থেকে বৃহস্পতিবার) নির্বাচন করুন।</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- MAIN TABLE CARD -->
       <div class="card">
         <div class="card-header roster-header">
@@ -198,8 +232,8 @@ export interface AttendanceRowItem {
               <app-icon name="calendar" [size]="14"></app-icon>
               {{ selectedDate }}
             </span>
-            <span class="status-indicator-badge" [class.synced]="isRegisterSynced()" [class.unsaved]="!isRegisterSynced()">
-              {{ isRegisterSynced() ? 'Synced with Database' : 'Unsaved / Modified' }}
+            <span class="status-indicator-badge" [class.badge-closed-tag]="isAttendanceClosed" [class.synced]="!isAttendanceClosed && isRegisterSynced()" [class.unsaved]="!isAttendanceClosed && !isRegisterSynced()">
+              {{ isAttendanceClosed ? ('Attendance Locked (' + (getDateHoliday() ? 'Holiday' : 'Weekend') + ')') : (isRegisterSynced() ? 'Synced with Database' : 'Unsaved / Modified') }}
             </span>
           </div>
 
@@ -334,7 +368,14 @@ export interface AttendanceRowItem {
 
                 <!-- STATUS TOGGLE GROUP -->
                 <td style="text-align: center;">
-                  <div class="status-toggle-group">
+                  <div *ngIf="isAttendanceClosed" class="closed-cell-badge">
+                    <span class="badge-closed-roster" [class.badge-holiday]="getDateHoliday()" [class.badge-weekend]="!getDateHoliday()">
+                      <app-icon [name]="getDateHoliday() ? 'calendar-clock' : 'coffee'" [size]="13"></app-icon>
+                      <span>{{ getDateHoliday() ? (getDateHoliday()?.title || 'Holiday') : 'Weekend Off' }}</span>
+                    </span>
+                  </div>
+
+                  <div *ngIf="!isAttendanceClosed" class="status-toggle-group">
                     <button
                       type="button"
                       class="toggle-btn btn-present"
@@ -374,6 +415,7 @@ export interface AttendanceRowItem {
                       [(ngModel)]="row.remark"
                       (change)="onRemarkChange()"
                       placeholder="e.g. Sick, Family emergency, Doctor visit"
+                      [disabled]="isAttendanceClosed"
                     />
                   </div>
                 </td>
@@ -392,11 +434,12 @@ export interface AttendanceRowItem {
               type="button"
               class="btn btn-primary"
               (click)="saveAttendance()"
-              [disabled]="isSaving"
+              [disabled]="isSaving || isAttendanceClosed"
             >
-              <app-icon *ngIf="!isSaving" name="check" [size]="16"></app-icon>
+              <app-icon *ngIf="!isSaving && !isAttendanceClosed" name="check" [size]="16"></app-icon>
+              <app-icon *ngIf="isAttendanceClosed" name="shield-check" [size]="16"></app-icon>
               <app-icon *ngIf="isSaving" name="loader" [size]="16" class="spin-icon"></app-icon>
-              <span>{{ isSaving ? 'Saving...' : 'Save Register' }}</span>
+              <span>{{ isSaving ? 'Saving...' : (isAttendanceClosed ? 'Locked (' + (closedType || 'Off') + ')' : 'Save Register') }}</span>
             </button>
           </div>
         </div>
@@ -627,6 +670,162 @@ export interface AttendanceRowItem {
     }
     @keyframes spin {
       100% { transform: rotate(360deg); }
+    }
+
+    /* Weekend & Holiday Closed Banner & Indicators */
+    .closed-pill-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .pill-holiday {
+      background: #fef2f2;
+      color: #dc2626;
+      border: 1px solid #fecaca;
+    }
+    .pill-weekend {
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #bfdbfe;
+    }
+    .input-holiday {
+      border-color: #fca5a5 !important;
+      background-color: #fffaf0 !important;
+    }
+    .input-weekend {
+      border-color: #bfdbfe !important;
+      background-color: #f8fafc !important;
+    }
+
+    .attendance-closed-banner {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #fed7aa;
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      box-shadow: 0 4px 16px -2px rgba(245, 158, 11, 0.12);
+      transition: all 0.3s ease;
+    }
+    .attendance-closed-banner.banner-holiday {
+      border-color: #fecaca;
+      background: linear-gradient(135deg, #fff5f5 0%, #fee2e2 100%);
+      box-shadow: 0 4px 16px -2px rgba(239, 68, 68, 0.12);
+    }
+    .attendance-closed-banner.banner-weekend {
+      border-color: #bfdbfe;
+      background: linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%);
+      box-shadow: 0 4px 16px -2px rgba(37, 99, 235, 0.12);
+    }
+    .acb-wrap {
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+      padding: 18px 24px;
+    }
+    .acb-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 54px;
+      height: 54px;
+      border-radius: 14px;
+      flex-shrink: 0;
+    }
+    .acb-icon.acb-holiday {
+      background: #fee2e2;
+      color: #dc2626;
+      border: 1px solid #fca5a5;
+    }
+    .acb-icon.acb-weekend {
+      background: #dbeafe;
+      color: #1d4ed8;
+      border: 1px solid #93c5fd;
+    }
+    .acb-body {
+      flex: 1;
+    }
+    .acb-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+    .acb-tag {
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      padding: 3px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+    .tag-holiday {
+      background: #dc2626;
+      color: #ffffff;
+    }
+    .tag-weekend {
+      background: #2563eb;
+      color: #ffffff;
+    }
+    .acb-title {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .acb-desc {
+      margin: 0 0 10px 0;
+      font-size: 0.88rem;
+      color: #334155;
+      line-height: 1.5;
+    }
+    .acb-footer {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #64748b;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 5px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+    }
+    .badge-closed-tag {
+      background: #fee2e2 !important;
+      color: #dc2626 !important;
+      border: 1px solid #fca5a5 !important;
+      font-weight: 700;
+    }
+    .closed-cell-badge {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .badge-closed-roster {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 8px;
+      letter-spacing: 0.02em;
+    }
+    .badge-closed-roster.badge-holiday {
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+    }
+    .badge-closed-roster.badge-weekend {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
     }
 
     /* Filter strip */
@@ -1232,6 +1431,12 @@ export class AttendanceEntryComponent implements OnInit, OnDestroy {
 
   attendanceRows: AttendanceRowItem[] = [];
 
+  weekendSettings: WeekendSettings = {
+    weekendDays: [5, 6],
+    customNote: 'Standard Institutional Weekend: Friday & Saturday'
+  };
+  holidays: AcademicHoliday[] = [];
+
   isLoading = false;
   isSaving = false;
   hasUnsavedChanges = false;
@@ -1258,13 +1463,22 @@ export class AttendanceEntryComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
 
     try {
-      const [classes, sections] = await Promise.all([
+      const [classes, sections, weekendSettings, holidays] = await Promise.all([
         this.academicStore.loadClasses(),
-        this.academicStore.loadSections()
+        this.academicStore.loadSections(),
+        firstValueFrom(this.attendanceStore.fetchWeekendSettings()).catch(() => this.weekendSettings),
+        firstValueFrom(this.attendanceStore.fetchHolidays()).catch(() => [])
       ]);
 
       this.classes = classes || [];
       this.allSections = sections || [];
+
+      if (weekendSettings && Array.isArray(weekendSettings.weekendDays)) {
+        this.weekendSettings = weekendSettings;
+      }
+      if (holidays && Array.isArray(holidays)) {
+        this.holidays = holidays;
+      }
 
       if (!this.selectedClassId && this.classes.length > 0) {
         const def = this.classes.find(c => c.name.includes('10') || c.id === 'cls-10') || this.classes[0];
@@ -1280,6 +1494,60 @@ export class AttendanceEntryComponent implements OnInit, OnDestroy {
       this.isLoading = false;
       this.cdr.markForCheck();
     }
+  }
+
+  isDateWeekend(dateStr: string = this.selectedDate): boolean {
+    if (!dateStr) return false;
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return false;
+    const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    const day = d.getDay(); // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
+    const weekendList = this.weekendSettings?.weekendDays || [5, 6];
+    return weekendList.includes(day);
+  }
+
+  getDateHoliday(dateStr: string = this.selectedDate): AcademicHoliday | null {
+    if (!dateStr) return null;
+    return this.holidays.find(h => {
+      if (!h.isActive) return false;
+      return dateStr >= h.startDate && dateStr <= h.endDate;
+    }) || null;
+  }
+
+  get isAttendanceClosed(): boolean {
+    return this.isDateWeekend() || !!this.getDateHoliday();
+  }
+
+  get closedType(): 'Weekend' | 'Holiday' | null {
+    if (this.getDateHoliday()) return 'Holiday';
+    if (this.isDateWeekend()) return 'Weekend';
+    return null;
+  }
+
+  get closedReason(): string {
+    const h = this.getDateHoliday();
+    if (h) return `Official Holiday: ${h.title} (${h.type || 'Institutional'})`;
+    if (this.isDateWeekend()) {
+      const parts = this.selectedDate.split('-');
+      const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+      return `Weekly Weekend: ${dayName} (সাপ্তাহিক ছুটি)`;
+    }
+    return '';
+  }
+
+  get closedReasonBangla(): string {
+    const h = this.getDateHoliday();
+    if (h) {
+      return `সরকারি ও প্রাতিষ্ঠানিক ছুটির দিন "${h.title}" উপলক্ষে প্রতিষ্ঠানে নিয়মিত শ্রেণি কার্যক্রম স্থগিত থাকায় হাজিরা গ্রহণ বন্ধ রয়েছে।`;
+    }
+    if (this.isDateWeekend()) {
+      const parts = this.selectedDate.split('-');
+      const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      const dayName = d.toLocaleDateString('bn-BD', { weekday: 'long' }) || d.toLocaleDateString('en-US', { weekday: 'long' });
+      return `সাপ্তাহিক ছুটি (${dayName}): নিয়মিত অ্যাকাডেমিক পাঠদান বন্ধ থাকায় এই দিনে শিক্ষার্থীদের হাজিরা গ্রহণ বন্ধ রয়েছে।`;
+    }
+    return '';
   }
 
   get todayDate(): string {
@@ -1307,6 +1575,9 @@ export class AttendanceEntryComponent implements OnInit, OnDestroy {
     if (this.selectedDate > this.todayDate) {
       this.selectedDate = this.todayDate;
       this.toast.warning('Future Date Restricted', 'Attendance cannot be marked for future dates. Automatically set to today.');
+    }
+    if (this.isAttendanceClosed) {
+      this.toast.info('Attendance Closed', `${this.closedReason}. Attendance entry is closed for this date.`);
     }
     await this.loadStudentsForAttendance();
   }
@@ -1413,6 +1684,10 @@ export class AttendanceEntryComponent implements OnInit, OnDestroy {
   }
 
   setStatus(row: AttendanceRowItem, status: 'Present' | 'Late' | 'Absent') {
+    if (this.isAttendanceClosed) {
+      this.toast.warning('Attendance Closed', `Cannot modify attendance status on ${this.closedReason}.`);
+      return;
+    }
     if (row.status !== status) {
       row.status = status;
       this.hasUnsavedChanges = true;
@@ -1425,6 +1700,10 @@ export class AttendanceEntryComponent implements OnInit, OnDestroy {
   }
 
   markAll(status: 'Present' | 'Late' | 'Absent') {
+    if (this.isAttendanceClosed) {
+      this.toast.warning('Attendance Closed', `Cannot mark attendance on ${this.closedReason}.`);
+      return;
+    }
     if (this.attendanceRows.length === 0) return;
     this.attendanceRows.forEach(r => (r.status = status));
     this.hasUnsavedChanges = true;
@@ -1537,6 +1816,11 @@ export class AttendanceEntryComponent implements OnInit, OnDestroy {
 
   // --- Save to Backend API ---
   saveAttendance() {
+    if (this.isAttendanceClosed) {
+      this.toast.error('Attendance Blocked', `Cannot record or save attendance on ${this.closedReason}. Attendance entry is closed.`);
+      return;
+    }
+
     if (this.selectedDate > this.todayDate) {
       this.toast.error('Restricted', 'Attendance cannot be marked or saved for future dates.');
       return;

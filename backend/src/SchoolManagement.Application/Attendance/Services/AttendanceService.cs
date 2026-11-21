@@ -74,6 +74,24 @@ public class AttendanceService : IAttendanceService
         {
             throw new InvalidOperationException("Attendance cannot be recorded for future dates beyond current system date.");
         }
+
+        // Validate Weekend and Holiday restrictions
+        var calendar = LoadOrCreateCalendarData("br-01");
+        int dayOfWeek = (int)request.Date.DayOfWeek;
+        var weekendDays = calendar.WeekendSettings?.WeekendDays ?? new List<int> { 5, 6 };
+        if (weekendDays.Contains(dayOfWeek))
+        {
+            var dayName = request.Date.ToString("dddd");
+            throw new InvalidOperationException($"Attendance entry is closed on weekends ({dayName}). Attendance cannot be recorded.");
+        }
+
+        var dateStr = request.Date.ToString("yyyy-MM-dd");
+        var holiday = calendar.Holidays.FirstOrDefault(h => h.IsActive && string.Compare(dateStr, h.StartDate) >= 0 && string.Compare(dateStr, h.EndDate) <= 0);
+        if (holiday != null)
+        {
+            throw new InvalidOperationException($"Attendance entry is closed on official holiday: {holiday.Title}. Attendance cannot be recorded.");
+        }
+
         var endOfDay = startOfDay.AddDays(1);
 
         foreach (var item in request.Records)

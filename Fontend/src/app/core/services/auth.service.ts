@@ -134,7 +134,7 @@ export class AuthService {
     try {
       localStorage.setItem('sms_current_user', JSON.stringify(user));
       localStorage.setItem('sms_user_role', user.roleName || '');
-    } catch {}
+    } catch { }
     this.campus.configure(user);
   }
 
@@ -198,7 +198,7 @@ export class AuthService {
   async logout(): Promise<void> {
     try {
       await firstValueFrom(this.http.post(`${this.API_URL}/auth/logout`, {}));
-    } catch {}
+    } catch { }
 
     this.clearSession();
     this.toast.info('Logged Out', 'You have been safely signed out.');
@@ -319,7 +319,7 @@ export class AuthService {
         this.myMenus$.next(menusRes.value.data);
         try {
           localStorage.setItem('sms_my_menus', JSON.stringify(menusRes.value.data));
-        } catch {}
+        } catch { }
       }
 
       if (permsRes.status === 'fulfilled' && permsRes.value?.success && permsRes.value.data) {
