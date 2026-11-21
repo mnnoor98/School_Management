@@ -1252,7 +1252,7 @@ export class MarksheetComponent implements OnInit {
     } else {
       this.filteredStudents = this.allStudents.filter(
         s => s.classId === this.selectedClassId &&
-             (this.selectedSectionId === 'ALL' || s.sectionId === this.selectedSectionId)
+          (this.selectedSectionId === 'ALL' || s.sectionId === this.selectedSectionId)
       );
 
       if (this.filteredStudents.length > 0) {
@@ -1321,7 +1321,7 @@ export class MarksheetComponent implements OnInit {
   async loadTabulation() {
     const studentsInClass = this.allStudents.filter(
       s => s.classId === this.selectedClassId &&
-           (this.selectedSectionId === 'ALL' || s.sectionId === this.selectedSectionId)
+        (this.selectedSectionId === 'ALL' || s.sectionId === this.selectedSectionId)
     );
 
     // Fetch marks in memory for class

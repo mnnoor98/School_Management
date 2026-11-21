@@ -789,7 +789,6 @@ export interface LedgerEntry {
                 class="form-control font-bold font-mono text-lg text-emerald"
                 [(ngModel)]="paymentAmount"
                 name="paymentAmount"
-                [max]="basePaymentDue + paymentLateFine - paymentDiscount"
                 min="1"
                 required
               />
@@ -875,9 +874,10 @@ export interface LedgerEntry {
           <div class="flex justify-end gap-2 mt-4 pt-3 border-top">
             <button type="button" class="btn btn-outline" (click)="isPaymentModalOpen = false">Cancel</button>
             <button
-              type="submit"
+              type="button"
               class="btn btn-success font-bold"
               [disabled]="!paymentAmount || paymentAmount <= 0"
+              (click)="processPayment()"
             >
               <app-icon name="check-circle" [size]="16"></app-icon>
               <span>Confirm & Issue Money Receipt (৳ {{ paymentAmount.toLocaleString() }})</span>
@@ -3363,14 +3363,19 @@ export class FeeCollectionComponent implements OnInit {
   }
 
   recalculateNetPayment() {
-    const net = Math.max(0, this.basePaymentDue + (this.paymentLateFine || 0) - (this.paymentDiscount || 0));
+    const base = Number(this.basePaymentDue) || 0;
+    const fine = Number(this.paymentLateFine) || 0;
+    const disc = Number(this.paymentDiscount) || 0;
+    const net = Math.max(0, base + fine - disc);
     this.paymentAmount = net;
     this.calculateChange();
   }
 
   calculateChange() {
-    if (this.paymentMethod === 'Cash' && this.tenderedCash > 0) {
-      this.changeToReturn = Math.max(0, this.tenderedCash - this.paymentAmount);
+    const tendered = Number(this.tenderedCash) || 0;
+    const amount = Number(this.paymentAmount) || 0;
+    if (this.paymentMethod === 'Cash' && tendered > 0) {
+      this.changeToReturn = Math.max(0, tendered - amount);
     } else {
       this.changeToReturn = 0;
     }
@@ -3380,10 +3385,15 @@ export class FeeCollectionComponent implements OnInit {
     if (this.paymentTargetInvoices.length === 0 || this.paymentAmount <= 0) return;
 
     try {
-      const paymentItems = this.paymentTargetInvoices.map(inv => ({
-        invoiceId: inv.id,
-        amountToPay: Math.min(inv.dueAmount, this.paymentAmount)
-      }));
+      let remaining = Number(this.paymentAmount) || 0;
+      const paymentItems = this.paymentTargetInvoices.map(inv => {
+        const allocated = Math.min(inv.dueAmount, remaining);
+        remaining -= allocated;
+        return {
+          invoiceId: inv.id,
+          amountToPay: allocated
+        };
+      });
 
       const payment = await this.financeStore.batchCollectFeePaymentsAsync({
         studentId: this.selectedStudentId,
@@ -3391,8 +3401,8 @@ export class FeeCollectionComponent implements OnInit {
         paymentMethod: this.paymentMethod,
         transactionRef: this.transactionRef,
         notes: this.paymentNotes,
-        discount: this.paymentDiscount,
-        lateFee: this.paymentLateFine
+        discount: Number(this.paymentDiscount) || 0,
+        lateFee: Number(this.paymentLateFine) || 0
       });
 
       this.latestPayment = payment;

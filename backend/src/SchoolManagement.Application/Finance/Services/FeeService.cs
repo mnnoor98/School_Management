@@ -503,10 +503,24 @@ public class FeeService : IFeeService
                       await _context.Students.FindAsync(firstInvoice.StudentId);
 
         decimal totalPaid = 0;
+        decimal discountRemaining = request.Discount ?? 0;
+
         foreach (var item in request.Items)
         {
             var inv = invoices.FirstOrDefault(i => i.Id == item.InvoiceId);
-            if (inv == null || item.AmountPaid <= 0) continue;
+            if (inv == null) continue;
+
+            // Apply special waiver / scholarship discount proportionally across invoices
+            if (discountRemaining > 0 && inv.DueAmount > 0)
+            {
+                var disc = Math.Min(discountRemaining, inv.DueAmount);
+                inv.DiscountAmount += disc;
+                inv.NetAmount = Math.Max(0, inv.TotalAmount - inv.DiscountAmount);
+                inv.DueAmount = Math.Max(0, inv.NetAmount - inv.PaidAmount);
+                discountRemaining -= disc;
+            }
+
+            if (item.AmountPaid <= 0) continue;
 
             var payAmt = Math.Min(item.AmountPaid, inv.DueAmount);
             inv.PaidAmount += payAmt;
@@ -536,7 +550,7 @@ public class FeeService : IFeeService
             BranchId = firstInvoice.BranchId,
             SchoolId = firstInvoice.SchoolId,
             ReceiptNo = receiptNo,
-            InvoiceId = string.Join(",", invoiceIds),
+            InvoiceId = firstInvoice.Id, // Valid foreign key reference
             StudentId = student?.Id ?? firstInvoice.StudentId,
             StudentName = student?.FullName ?? firstInvoice.StudentName,
             RollNo = student?.RollNo ?? firstInvoice.RollNo,
@@ -546,7 +560,7 @@ public class FeeService : IFeeService
             TransactionRef = request.TransactionRef,
             PaymentDate = DateTime.UtcNow,
             CollectedBy = collectedBy,
-            Notes = request.Notes ?? $"Multi-invoice receipt for {request.Items.Count} fee items"
+            Notes = request.Notes ?? $"Multi-invoice receipt for {request.Items.Count} fee items: {string.Join(", ", invoices.Select(i => i.InvoiceNo))}"
         };
 
         _context.FeePayments.Add(payment);
@@ -564,7 +578,14 @@ public class FeeService : IFeeService
             Timestamp = DateTime.UtcNow
         });
 
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            return (null, $"Error saving fee collection: {ex.Message}");
+        }
 
         try
         {
