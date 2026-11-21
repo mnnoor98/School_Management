@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using SchoolManagement.Domain.Academic;
 using SchoolManagement.Domain.Attendance;
 using SchoolManagement.Domain.Auth;
@@ -14,6 +15,49 @@ namespace SchoolManagement.Infrastructure.Persistence;
 
 public static class DbInitializer
 {
+    public static async Task EnsureDatabaseCreatedAsync(string? connectionString)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
+
+        try
+        {
+            var builder = new NpgsqlConnectionStringBuilder(connectionString);
+            var targetDb = builder.Database;
+            if (string.IsNullOrWhiteSpace(targetDb)) return;
+
+            // Connect to maintenance database 'postgres' to verify or create the target database
+            var masterBuilder = new NpgsqlConnectionStringBuilder(connectionString)
+            {
+                Database = "postgres"
+            };
+
+            await using var conn = new NpgsqlConnection(masterBuilder.ConnectionString);
+            await conn.OpenAsync();
+
+            await using var checkCmd = conn.CreateCommand();
+            checkCmd.CommandText = "SELECT 1 FROM pg_database WHERE datname = @db;";
+            checkCmd.Parameters.AddWithValue("db", targetDb);
+            var exists = await checkCmd.ExecuteScalarAsync();
+
+            if (exists == null)
+            {
+                Console.WriteLine($"[Database Provisioning] Database '{targetDb}' not found. Auto-creating database...");
+                await using var createCmd = conn.CreateCommand();
+                createCmd.CommandText = $"CREATE DATABASE \"{targetDb.Replace("\"", "\"\"")}\" WITH ENCODING = 'UTF8';";
+                await createCmd.ExecuteNonQueryAsync();
+                Console.WriteLine($"[Database Provisioning] Database '{targetDb}' successfully created.");
+            }
+            else
+            {
+                Console.WriteLine($"[Database Provisioning] Database '{targetDb}' verified.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Database Provisioning Note] DB check exception: {ex.Message}");
+        }
+    }
+
     public static async Task InitializeAsync(ApplicationDbContext context)
     {
         await context.Database.MigrateAsync();
@@ -76,6 +120,7 @@ public static class DbInitializer
         {
             Id = "ay-2026",
             SchoolId = school.Id,
+            BranchId = branch.Id,
             Name = "2026-2027",
             StartDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             EndDate = new DateTime(2026, 12, 31, 23, 59, 59, DateTimeKind.Utc),

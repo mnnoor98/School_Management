@@ -36,3 +36,5 @@ backend/src/SchoolManagement.Api/storage/
 
 # Temporary scratch directory
 scratch/
+
+publish/

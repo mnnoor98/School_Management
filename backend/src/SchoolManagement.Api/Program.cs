@@ -111,6 +111,9 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // Database initialization and seed data execution
+var defaultConn = builder.Configuration.GetConnectionString("DefaultConnection");
+await DbInitializer.EnsureDatabaseCreatedAsync(defaultConn);
+
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
