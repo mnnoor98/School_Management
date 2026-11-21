@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, firstValueFrom, map, catchError, of, tap } from 'rxjs';
-import { AttendanceRecord, AttendanceCorrectionLog, AcademicHoliday, WeekendSettings } from '../../models';
+import { AttendanceRecord, AttendanceCorrectionLog, AcademicHoliday, WeekendSettings, SpecialWorkingDay } from '../../models';
 import { CampusSessionService } from '../campus-session.service';
 
 interface ApiResponse<T> {
@@ -26,6 +26,7 @@ export class AttendanceStoreService {
     customNote: 'Standard Institutional Weekend: Friday & Saturday'
   });
   private holidays$ = new BehaviorSubject<AcademicHoliday[]>([]);
+  private specialWorkingDays$ = new BehaviorSubject<SpecialWorkingDay[]>([]);
 
   getAttendance$() { return this.attendance$.asObservable(); }
   getAttendanceLogs$() { return this.attendanceLogs$.asObservable(); }
@@ -33,6 +34,8 @@ export class AttendanceStoreService {
   getWeekendSettings(): WeekendSettings { return this.weekendSettings$.value; }
   getHolidays$() { return this.holidays$.asObservable(); }
   getHolidays(): AcademicHoliday[] { return this.holidays$.value; }
+  getSpecialWorkingDays$() { return this.specialWorkingDays$.asObservable(); }
+  getSpecialWorkingDays(): SpecialWorkingDay[] { return this.specialWorkingDays$.value; }
 
   getAttendance(date: string, classId: string, sectionId: string): AttendanceRecord[] {
     const activeBranch = this.campus.branchId;
@@ -384,6 +387,82 @@ export class AttendanceStoreService {
       return true;
     } catch (e) {
       console.warn('Backend deleteHoliday failed, deleted locally:', e);
+      return true;
+    }
+  }
+
+  // --- Special Working Day (সরকারি নির্দেশে ছুটির দিনে ক্লাস ও হাজিরা সচল) ---
+  fetchSpecialWorkingDays(): Observable<SpecialWorkingDay[]> {
+    const cached = this.loadStorage<SpecialWorkingDay[]>('special_working_days', []);
+    return this.http.get<ApiResponse<SpecialWorkingDay[]>>(`${this.API_BASE}/attendance/special-working-days`).pipe(
+      map(res => {
+        if (res && res.data) {
+          this.specialWorkingDays$.next(res.data);
+          this.saveStorage('special_working_days', res.data);
+          return res.data;
+        }
+        if (cached.length > 0) {
+          this.specialWorkingDays$.next(cached);
+          return cached;
+        }
+        return [];
+      }),
+      catchError(() => {
+        this.specialWorkingDays$.next(cached);
+        return of(cached);
+      })
+    );
+  }
+
+  async declareSpecialWorkingDay(day: Partial<SpecialWorkingDay>): Promise<SpecialWorkingDay> {
+    const current = [...this.specialWorkingDays$.value];
+    let record: SpecialWorkingDay = {
+      id: day.id || 'swd-' + Math.random().toString(36).substring(2, 9),
+      date: day.date || '',
+      reason: day.reason || 'Govt Order / Makeup Academic Class',
+      orderReference: day.orderReference || '',
+      declaredBy: day.declaredBy || 'Admin',
+      createdAt: day.createdAt || new Date().toISOString()
+    };
+
+    const existingIdx = current.findIndex(d => d.date === record.date || (day.id && d.id === day.id));
+    if (existingIdx > -1) {
+      current[existingIdx] = record;
+    } else {
+      current.unshift(record);
+    }
+
+    this.specialWorkingDays$.next(current);
+    this.saveStorage('special_working_days', current);
+
+    try {
+      const res = await firstValueFrom(
+        this.http.post<ApiResponse<SpecialWorkingDay>>(`${this.API_BASE}/attendance/special-working-days`, record)
+      );
+      if (res && res.data) {
+        const updated = this.specialWorkingDays$.value.map(d => d.date === record.date ? res.data : d);
+        this.specialWorkingDays$.next(updated);
+        this.saveStorage('special_working_days', updated);
+        return res.data;
+      }
+    } catch (e) {
+      console.warn('Backend declareSpecialWorkingDay failed, saved locally:', e);
+    }
+    return record;
+  }
+
+  async removeSpecialWorkingDay(dateOrId: string): Promise<boolean> {
+    const current = this.specialWorkingDays$.value.filter(d => d.id !== dateOrId && d.date !== dateOrId);
+    this.specialWorkingDays$.next(current);
+    this.saveStorage('special_working_days', current);
+
+    try {
+      await firstValueFrom(
+        this.http.delete<ApiResponse<boolean>>(`${this.API_BASE}/attendance/special-working-days/${encodeURIComponent(dateOrId)}`)
+      );
+      return true;
+    } catch (e) {
+      console.warn('Backend removeSpecialWorkingDay failed, removed locally:', e);
       return true;
     }
   }

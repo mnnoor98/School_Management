@@ -13,4 +13,7 @@ public interface IAttendanceService
     Task<List<AcademicHolidayDto>> GetHolidaysAsync(string branchId);
     Task<AcademicHolidayDto> SaveHolidayAsync(string branchId, AcademicHolidayDto holiday);
     Task<bool> DeleteHolidayAsync(string branchId, string id);
+    Task<List<SpecialWorkingDayDto>> GetSpecialWorkingDaysAsync(string branchId);
+    Task<SpecialWorkingDayDto> DeclareSpecialWorkingDayAsync(string branchId, SpecialWorkingDayDto request, string declaredBy);
+    Task<bool> RemoveSpecialWorkingDayAsync(string branchId, string dateOrId);
 }

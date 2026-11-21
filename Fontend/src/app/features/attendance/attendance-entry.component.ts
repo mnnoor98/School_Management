@@ -10,7 +10,7 @@ import { StudentStoreService } from '../../core/services/stores/student-store.se
 import { CampusSessionService } from '../../core/services/campus-session.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
-import { SchoolClass, Section, Student, AttendanceRecord, User, AcademicHoliday, WeekendSettings } from '../../core/models';
+import { SchoolClass, Section, Student, AttendanceRecord, User, AcademicHoliday, WeekendSettings, SpecialWorkingDay } from '../../core/models';
 import { IconComponent } from '../../shared/components/icon.component';
 import { ModalComponent } from '../../shared/components/modal.component';
 
@@ -126,7 +126,11 @@ export interface AttendanceRowItem {
               <label class="form-label d-flex justify-between items-center">
                 <span class="d-flex items-center gap-2">
                   <span>Attendance Date <span class="required">*</span></span>
-                  <span *ngIf="isAttendanceClosed" class="closed-pill-tag" [class.pill-holiday]="getDateHoliday()" [class.pill-weekend]="!getDateHoliday()">
+                  <span *ngIf="isSpecialWorkingDay" class="closed-pill-tag pill-special" title="Special Working Day Declared">
+                    <app-icon name="check-circle" [size]="12"></app-icon>
+                    <span>Special Working Day</span>
+                  </span>
+                  <span *ngIf="!isSpecialWorkingDay && isAttendanceClosed" class="closed-pill-tag" [class.pill-holiday]="getDateHoliday()" [class.pill-weekend]="!getDateHoliday()">
                     <app-icon [name]="getDateHoliday() ? 'calendar-clock' : 'coffee'" [size]="12"></app-icon>
                     <span>{{ getDateHoliday() ? 'Holiday' : 'Weekend' }}</span>
                   </span>
@@ -137,8 +141,9 @@ export interface AttendanceRowItem {
                 <input
                   type="date"
                   class="form-control"
-                  [class.input-holiday]="getDateHoliday()"
-                  [class.input-weekend]="!getDateHoliday() && isAttendanceClosed"
+                  [class.input-special]="isSpecialWorkingDay"
+                  [class.input-holiday]="!isSpecialWorkingDay && getDateHoliday()"
+                  [class.input-weekend]="!isSpecialWorkingDay && !getDateHoliday() && isAttendanceClosed"
                   [(ngModel)]="selectedDate"
                   [max]="todayDate"
                   (change)="onDateOrClassChange()"
@@ -196,6 +201,38 @@ export interface AttendanceRowItem {
         </div>
       </div>
 
+      <!-- SPECIAL WORKING DAY ACTIVE BANNER -->
+      <div class="card mb-4 attendance-special-day-banner" *ngIf="isSpecialWorkingDay">
+        <div class="asb-wrap">
+          <div class="asb-icon">
+            <app-icon name="check-circle" [size]="32"></app-icon>
+          </div>
+          <div class="asb-body">
+            <div class="asb-header">
+              <span class="asb-tag">SPECIAL WORKING DAY (বিশেষ কার্যদিবস সচল)</span>
+              <span class="asb-ref" *ngIf="getSpecialWorkingDay()?.orderReference">
+                <app-icon name="file-text" [size]="12"></app-icon>
+                {{ getSpecialWorkingDay()?.orderReference }}
+              </span>
+              <h4 class="asb-title">{{ getSpecialWorkingDay()?.reason }}</h4>
+            </div>
+            <p class="asb-desc">
+              সরকারি পরিপত্র বা ক্ষতিপূরণ ক্লাস উপলক্ষ্যে <strong>{{ selectedDate }}</strong> তারিখে সাধারণ সাপ্তাহিক ছুটি বা অবকাশ শিথিল করে পাঠদান ও হাজিরা গ্রহণ উন্মুক্ত করা হয়েছে।
+            </p>
+            <div class="asb-footer-bar">
+              <span class="asb-declared-by">
+                <app-icon name="user" [size]="13"></app-icon>
+                <span>অনুমোদনকারী: {{ getSpecialWorkingDay()?.declaredBy || 'Academic Authority' }}</span>
+              </span>
+              <button type="button" class="btn-revoke-special" (click)="revokeSpecialWorkingDay()" title="Cancel special working day status">
+                <app-icon name="x" [size]="13"></app-icon>
+                <span>বিশেষ কার্যদিবস প্রত্যাহার করুন (Relock)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ATTENDANCE CLOSED / WEEKEND / HOLIDAY BANNER -->
       <div class="card mb-4 attendance-closed-banner" *ngIf="isAttendanceClosed" [class.banner-holiday]="getDateHoliday()" [class.banner-weekend]="!getDateHoliday()">
         <div class="acb-wrap">
@@ -213,8 +250,14 @@ export interface AttendanceRowItem {
               {{ closedReasonBangla }}
             </p>
             <div class="acb-footer">
-              <app-icon name="alert-circle" [size]="15"></app-icon>
-              <span>এই দিনে সাধারণ পাঠদান বন্ধ থাকায় হাজিরা গ্রহণ ও পরিবর্তন অপশন বন্ধ রাখা হয়েছে। অ্যাকাডেমিক কার্যদিবস (রবিবার থেকে বৃহস্পতিবার) নির্বাচন করুন।</span>
+              <div class="acb-notice">
+                <app-icon name="alert-circle" [size]="15"></app-icon>
+                <span>এই দিনে সাধারণ পাঠদান বন্ধ থাকায় হাজিরা অপশন লক রয়েছে।</span>
+              </div>
+              <button type="button" class="btn-unlock-special" (click)="openSpecialDayModal()">
+                <app-icon name="unlock" [size]="14"></app-icon>
+                <span>সরকারি নির্দেশে খোলা ঘোষণা করুন (Special Working Day)</span>
+              </button>
             </div>
           </div>
         </div>
@@ -594,6 +637,65 @@ export interface AttendanceRowItem {
         </button>
       </div>
     </app-modal>
+
+    <!-- ======================================================== -->
+    <!-- MODAL 3: DECLARE SPECIAL WORKING DAY                     -->
+    <!-- ======================================================== -->
+    <app-modal
+      [(isOpen)]="isSpecialDayModalOpen"
+      title="Declare Special Working Day (বিশেষ কার্যদিবস ঘোষণা)"
+      [maxWidth]="560"
+      (close)="isSpecialDayModalOpen = false"
+    >
+      <div class="modal-body p-4">
+        <div class="special-day-info-note mb-3">
+          <app-icon name="info" [size]="20" class="text-primary"></app-icon>
+          <div>
+            <strong>সরকারি নির্দেশনা বা ক্ষতিপূরণ ক্লাস আনলক</strong>
+            <p class="mb-0 text-xs text-muted">
+              সাপ্তাহিক ছুটি বা সাধারণ বন্ধের দিনে মন্ত্রণালয় বা প্রতিষ্ঠানের নির্দেশে পাঠদান সচল রাখতে এই তারিখটিকে বিশেষ কার্যদিবস হিসেবে চিহ্নিত করুন। এতে হাজিরা গ্রহণ ও সংরক্ষণ সক্রিয় হবে।
+            </p>
+          </div>
+        </div>
+
+        <div class="form-group mb-3">
+          <label class="form-label font-bold">Selected Date (তারিখ)</label>
+          <input type="text" class="form-control" [value]="selectedDate" readonly style="background: #f8fafc; font-weight: 700;" />
+        </div>
+
+        <div class="form-group mb-3">
+          <label class="form-label font-bold">Order Reference / Circular No. (স্মারক / পরিপত্র নং)</label>
+          <input
+            type="text"
+            class="form-control"
+            placeholder="e.g., Circular No. MoE/Sec-2/2026/04"
+            [(ngModel)]="specialDayForm.orderReference"
+          />
+          <small class="text-muted">মন্ত্রণালয় বা পরিচালনা পর্ষদের জারিকৃত স্মারক বা নোটিশ নম্বর (ঐচ্ছিক)</small>
+        </div>
+
+        <div class="form-group mb-4">
+          <label class="form-label font-bold">Reason / Academic Purpose (খোলার কারণ ও উদ্দেশ্য) <span class="required">*</span></label>
+          <input
+            type="text"
+            class="form-control"
+            placeholder="e.g., Govt Order / Makeup Academic Classes"
+            [(ngModel)]="specialDayForm.reason"
+          />
+        </div>
+
+        <div class="d-flex justify-between items-center pt-3 border-t">
+          <button type="button" class="btn btn-outline" (click)="isSpecialDayModalOpen = false" [disabled]="isSavingSpecialDay">
+            Cancel
+          </button>
+          <button type="button" class="btn btn-primary d-flex items-center gap-2" (click)="confirmSpecialWorkingDay()" [disabled]="isSavingSpecialDay || !specialDayForm.reason">
+            <app-icon *ngIf="!isSavingSpecialDay" name="check-circle" [size]="16"></app-icon>
+            <app-icon *ngIf="isSavingSpecialDay" name="loader" [size]="16" class="spin-icon"></app-icon>
+            <span>{{ isSavingSpecialDay ? 'Unlocking...' : 'Confirm & Unlock Attendance' }}</span>
+          </button>
+        </div>
+      </div>
+    </app-modal>
   `,
   styles: [`
     .mb-4 { margin-bottom: 24px; }
@@ -684,6 +786,11 @@ export interface AttendanceRowItem {
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
+    .pill-special {
+      background: #ecfdf5;
+      color: #059669;
+      border: 1px solid #a7f3d0;
+    }
     .pill-holiday {
       background: #fef2f2;
       color: #dc2626;
@@ -694,6 +801,10 @@ export interface AttendanceRowItem {
       color: #2563eb;
       border: 1px solid #bfdbfe;
     }
+    .input-special {
+      border-color: #34d399 !important;
+      background-color: #f0fdf4 !important;
+    }
     .input-holiday {
       border-color: #fca5a5 !important;
       background-color: #fffaf0 !important;
@@ -701,6 +812,112 @@ export interface AttendanceRowItem {
     .input-weekend {
       border-color: #bfdbfe !important;
       background-color: #f8fafc !important;
+    }
+
+    .attendance-special-day-banner {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #86efac;
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      box-shadow: 0 4px 16px -2px rgba(16, 185, 129, 0.15);
+      transition: all 0.3s ease;
+    }
+    .asb-wrap {
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+      padding: 18px 24px;
+    }
+    .asb-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 54px;
+      height: 54px;
+      border-radius: 14px;
+      background: #bbf7d0;
+      color: #15803d;
+      border: 1px solid #86efac;
+      flex-shrink: 0;
+    }
+    .asb-body {
+      flex: 1;
+    }
+    .asb-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+    .asb-tag {
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      padding: 3px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      background: #059669;
+      color: #ffffff;
+    }
+    .asb-ref {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #166534;
+      background: #ffffff;
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid #bbf7d0;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .asb-title {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #064e3b;
+    }
+    .asb-desc {
+      margin: 0 0 10px 0;
+      font-size: 0.88rem;
+      color: #14532d;
+      line-height: 1.5;
+    }
+    .asb-footer-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(16, 185, 129, 0.2);
+    }
+    .asb-declared-by {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #166534;
+    }
+    .btn-revoke-special {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #b91c1c;
+      background: #ffffff;
+      border: 1px solid #fca5a5;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-revoke-special:hover {
+      background: #fef2f2;
+      border-color: #ef4444;
     }
 
     .attendance-closed-banner {
@@ -785,6 +1002,14 @@ export interface AttendanceRowItem {
       line-height: 1.5;
     }
     .acb-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      width: 100%;
+    }
+    .acb-notice {
       display: inline-flex;
       align-items: center;
       gap: 6px;
@@ -795,6 +1020,36 @@ export interface AttendanceRowItem {
       padding: 5px 12px;
       border-radius: 8px;
       border: 1px solid rgba(0, 0, 0, 0.06);
+    }
+    .btn-unlock-special {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #065f46;
+      background: #ffffff;
+      border: 1.5px solid #059669;
+      padding: 6px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 6px rgba(5, 150, 105, 0.15);
+    }
+    .btn-unlock-special:hover {
+      background: #ecfdf5;
+      transform: translateY(-1px);
+    }
+    .special-day-info-note {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      background: #eef2ff;
+      border: 1px solid #c7d2fe;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      color: #3730a3;
     }
     .badge-closed-tag {
       background: #fee2e2 !important;
@@ -1436,6 +1691,7 @@ export class AttendanceEntryComponent implements OnInit, OnDestroy {
     customNote: 'Standard Institutional Weekend: Friday & Saturday'
   };
   holidays: AcademicHoliday[] = [];
+  specialWorkingDays: SpecialWorkingDay[] = [];
 
   isLoading = false;
   isSaving = false;
@@ -1447,6 +1703,15 @@ export class AttendanceEntryComponent implements OnInit, OnDestroy {
   isPrintModalOpen = false;
   isSmsModalOpen = false;
   isSendingSms = false;
+  isSpecialDayModalOpen = false;
+  isSavingSpecialDay = false;
+  specialDayForm: {
+    reason: string;
+    orderReference: string;
+  } = {
+    reason: 'Govt Order / Makeup Academic Classes (শিক্ষা মন্ত্রণালয়ের নির্দেশে ক্ষতিপূরণ ক্লাস)',
+    orderReference: ''
+  };
 
   async ngOnInit() {
     this.activeCampusName = this.campus.branchId === 'br-02' ? 'Uttara Campus' : 'Dhanmondi Campus';
@@ -1463,11 +1728,12 @@ export class AttendanceEntryComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
 
     try {
-      const [classes, sections, weekendSettings, holidays] = await Promise.all([
+      const [classes, sections, weekendSettings, holidays, specialDays] = await Promise.all([
         this.academicStore.loadClasses(),
         this.academicStore.loadSections(),
         firstValueFrom(this.attendanceStore.fetchWeekendSettings()).catch(() => this.weekendSettings),
-        firstValueFrom(this.attendanceStore.fetchHolidays()).catch(() => [])
+        firstValueFrom(this.attendanceStore.fetchHolidays()).catch(() => []),
+        firstValueFrom(this.attendanceStore.fetchSpecialWorkingDays()).catch(() => [])
       ]);
 
       this.classes = classes || [];
@@ -1478,6 +1744,9 @@ export class AttendanceEntryComponent implements OnInit, OnDestroy {
       }
       if (holidays && Array.isArray(holidays)) {
         this.holidays = holidays;
+      }
+      if (specialDays && Array.isArray(specialDays)) {
+        this.specialWorkingDays = specialDays;
       }
 
       if (!this.selectedClassId && this.classes.length > 0) {
@@ -1494,6 +1763,15 @@ export class AttendanceEntryComponent implements OnInit, OnDestroy {
       this.isLoading = false;
       this.cdr.markForCheck();
     }
+  }
+
+  getSpecialWorkingDay(dateStr: string = this.selectedDate): SpecialWorkingDay | null {
+    if (!dateStr) return null;
+    return this.specialWorkingDays.find(s => s.date === dateStr || (s.date && s.date.startsWith(dateStr))) || null;
+  }
+
+  get isSpecialWorkingDay(): boolean {
+    return !!this.getSpecialWorkingDay();
   }
 
   isDateWeekend(dateStr: string = this.selectedDate): boolean {
@@ -1515,7 +1793,63 @@ export class AttendanceEntryComponent implements OnInit, OnDestroy {
   }
 
   get isAttendanceClosed(): boolean {
+    if (this.isSpecialWorkingDay) return false;
     return this.isDateWeekend() || !!this.getDateHoliday();
+  }
+
+  openSpecialDayModal() {
+    this.specialDayForm = {
+      reason: 'Govt Circular / Makeup Academic Classes (শিক্ষা মন্ত্রণালয়ের নির্দেশে ক্ষতিপূরণ ক্লাস)',
+      orderReference: 'Circular No: MoE/' + new Date().getFullYear() + '/01'
+    };
+    this.isSpecialDayModalOpen = true;
+    this.cdr.markForCheck();
+  }
+
+  async confirmSpecialWorkingDay() {
+    if (!this.selectedDate) return;
+    this.isSavingSpecialDay = true;
+    this.cdr.markForCheck();
+    try {
+      const declared = await this.attendanceStore.declareSpecialWorkingDay({
+        date: this.selectedDate,
+        reason: this.specialDayForm.reason || 'Govt Order / Makeup Academic Class',
+        orderReference: this.specialDayForm.orderReference,
+        declaredBy: this.auth.getCurrentUser()?.fullName || 'Academic Admin'
+      });
+
+      const idx = this.specialWorkingDays.findIndex(d => d.date === declared.date);
+      if (idx > -1) {
+        this.specialWorkingDays[idx] = declared;
+      } else {
+        this.specialWorkingDays.unshift(declared);
+      }
+
+      this.isSpecialDayModalOpen = false;
+      this.toast.success('Special Working Day Declared', `${this.selectedDate} has been opened for classes and attendance register.`);
+    } catch (e: any) {
+      this.toast.error('Error', e?.message || 'Failed to declare special working day.');
+    } finally {
+      this.isSavingSpecialDay = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  async revokeSpecialWorkingDay() {
+    const swd = this.getSpecialWorkingDay();
+    if (!swd) return;
+    const ok = confirm(`Are you sure you want to revoke the Special Working Day declaration for ${this.selectedDate}? Regular holiday/weekend lock will be restored.`);
+    if (!ok) return;
+
+    try {
+      await this.attendanceStore.removeSpecialWorkingDay(swd.id || swd.date);
+      this.specialWorkingDays = this.specialWorkingDays.filter(d => d.date !== this.selectedDate && d.id !== swd.id);
+      this.toast.info('Revoked', `Special working day declaration for ${this.selectedDate} has been revoked.`);
+    } catch (e: any) {
+      this.toast.error('Error', 'Failed to revoke special working day.');
+    } finally {
+      this.cdr.markForCheck();
+    }
   }
 
   get closedType(): 'Weekend' | 'Holiday' | null {

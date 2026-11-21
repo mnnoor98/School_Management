@@ -67,3 +67,15 @@ public class AcademicHolidayDto
     public string? Description { get; set; }
     public bool IsActive { get; set; } = true;
 }
+
+public class SpecialWorkingDayDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string BranchId { get; set; } = string.Empty;
+    public string Date { get; set; } = string.Empty; // YYYY-MM-DD
+    public string Reason { get; set; } = string.Empty;
+    public string OrderReference { get; set; } = string.Empty;
+    public string DeclaredBy { get; set; } = string.Empty;
+    public DateTime DeclaredAt { get; set; } = DateTime.UtcNow;
+    public bool IsActive { get; set; } = true;
+}

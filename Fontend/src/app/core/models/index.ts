@@ -304,6 +304,18 @@ export interface AcademicHoliday {
   isActive: boolean;
 }
 
+export interface SpecialWorkingDay {
+  id: string;
+  branchId?: string;
+  date: string; // YYYY-MM-DD
+  reason: string;
+  orderReference?: string;
+  declaredBy?: string;
+  declaredAt?: string;
+  createdAt?: string;
+  isActive?: boolean;
+}
+
 export interface Exam {
   id: string;
   name: string;

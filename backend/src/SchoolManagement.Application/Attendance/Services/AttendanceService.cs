@@ -75,21 +75,27 @@ public class AttendanceService : IAttendanceService
             throw new InvalidOperationException("Attendance cannot be recorded for future dates beyond current system date.");
         }
 
-        // Validate Weekend and Holiday restrictions
-        var calendar = LoadOrCreateCalendarData("br-01");
-        int dayOfWeek = (int)request.Date.DayOfWeek;
-        var weekendDays = calendar.WeekendSettings?.WeekendDays ?? new List<int> { 5, 6 };
-        if (weekendDays.Contains(dayOfWeek))
-        {
-            var dayName = request.Date.ToString("dddd");
-            throw new InvalidOperationException($"Attendance entry is closed on weekends ({dayName}). Attendance cannot be recorded.");
-        }
-
         var dateStr = request.Date.ToString("yyyy-MM-dd");
-        var holiday = calendar.Holidays.FirstOrDefault(h => h.IsActive && string.Compare(dateStr, h.StartDate) >= 0 && string.Compare(dateStr, h.EndDate) <= 0);
-        if (holiday != null)
+
+        // Validate Weekend and Holiday restrictions (unless declared as Special Working Day)
+        var calendar = LoadOrCreateCalendarData("br-01");
+        var isSpecialWorkingDay = calendar.SpecialWorkingDays.Any(s => s.IsActive && s.Date == dateStr);
+
+        if (!isSpecialWorkingDay)
         {
-            throw new InvalidOperationException($"Attendance entry is closed on official holiday: {holiday.Title}. Attendance cannot be recorded.");
+            int dayOfWeek = (int)request.Date.DayOfWeek;
+            var weekendDays = calendar.WeekendSettings?.WeekendDays ?? new List<int> { 5, 6 };
+            if (weekendDays.Contains(dayOfWeek))
+            {
+                var dayName = request.Date.ToString("dddd");
+                throw new InvalidOperationException($"Attendance entry is closed on weekends ({dayName}). Attendance cannot be recorded unless authorized as a special working day.");
+            }
+
+            var holiday = calendar.Holidays.FirstOrDefault(h => h.IsActive && string.Compare(dateStr, h.StartDate) >= 0 && string.Compare(dateStr, h.EndDate) <= 0);
+            if (holiday != null)
+            {
+                throw new InvalidOperationException($"Attendance entry is closed on official holiday: {holiday.Title}. Attendance cannot be recorded unless authorized as a special working day.");
+            }
         }
 
         var endOfDay = startOfDay.AddDays(1);
@@ -216,6 +222,7 @@ public class AttendanceService : IAttendanceService
     {
         public WeekendSettingsDto WeekendSettings { get; set; } = new();
         public List<AcademicHolidayDto> Holidays { get; set; } = new();
+        public List<SpecialWorkingDayDto> SpecialWorkingDays { get; set; } = new();
     }
 
     private string GetCalendarFilePath(string branchId)
@@ -344,6 +351,59 @@ public class AttendanceService : IAttendanceService
     {
         var data = LoadOrCreateCalendarData(branchId);
         var removed = data.Holidays.RemoveAll(h => h.Id == id);
+        if (removed > 0)
+        {
+            SaveCalendarData(branchId, data);
+            return Task.FromResult(true);
+        }
+        return Task.FromResult(false);
+    }
+
+    public Task<List<SpecialWorkingDayDto>> GetSpecialWorkingDaysAsync(string branchId)
+    {
+        var data = LoadOrCreateCalendarData(branchId);
+        return Task.FromResult(data.SpecialWorkingDays);
+    }
+
+    public Task<SpecialWorkingDayDto> DeclareSpecialWorkingDayAsync(string branchId, SpecialWorkingDayDto request, string declaredBy)
+    {
+        var data = LoadOrCreateCalendarData(branchId);
+        var safeBranch = string.IsNullOrWhiteSpace(branchId) ? "br-01" : branchId.Trim();
+        var safeDate = (request.Date ?? string.Empty).Trim();
+
+        var existing = data.SpecialWorkingDays.FirstOrDefault(s => s.Date == safeDate);
+        if (existing != null)
+        {
+            existing.Reason = request.Reason;
+            existing.OrderReference = request.OrderReference;
+            existing.DeclaredBy = declaredBy;
+            existing.DeclaredAt = DateTime.UtcNow;
+            existing.IsActive = true;
+            SaveCalendarData(branchId, data);
+            return Task.FromResult(existing);
+        }
+
+        var newEntry = new SpecialWorkingDayDto
+        {
+            Id = "swd-" + Guid.NewGuid().ToString("N")[..8],
+            BranchId = safeBranch,
+            Date = safeDate,
+            Reason = request.Reason,
+            OrderReference = request.OrderReference,
+            DeclaredBy = declaredBy,
+            DeclaredAt = DateTime.UtcNow,
+            IsActive = true
+        };
+
+        data.SpecialWorkingDays.Add(newEntry);
+        SaveCalendarData(branchId, data);
+        return Task.FromResult(newEntry);
+    }
+
+    public Task<bool> RemoveSpecialWorkingDayAsync(string branchId, string dateOrId)
+    {
+        var data = LoadOrCreateCalendarData(branchId);
+        var removed = data.SpecialWorkingDays.RemoveAll(s => s.Id == dateOrId || s.Date == dateOrId);
         if (removed > 0)
         {
             SaveCalendarData(branchId, data);

@@ -112,4 +112,29 @@ public class AttendanceController : ControllerBase
         var success = await _attendanceService.DeleteHolidayAsync(branchId, id);
         return Ok(ApiResponse<bool>.Ok(success, success ? "Holiday removed successfully" : "Holiday not found"));
     }
+
+    [HttpGet("special-working-days")]
+    public async Task<ActionResult<ApiResponse<List<SpecialWorkingDayDto>>>> GetSpecialWorkingDays()
+    {
+        var branchId = Request.Headers["X-Campus-Id"].FirstOrDefault() ?? _currentUser.BranchId ?? "br-01";
+        var list = await _attendanceService.GetSpecialWorkingDaysAsync(branchId);
+        return Ok(ApiResponse<List<SpecialWorkingDayDto>>.Ok(list));
+    }
+
+    [HttpPost("special-working-days")]
+    public async Task<ActionResult<ApiResponse<SpecialWorkingDayDto>>> DeclareSpecialWorkingDay([FromBody] SpecialWorkingDayDto request)
+    {
+        var branchId = Request.Headers["X-Campus-Id"].FirstOrDefault() ?? _currentUser.BranchId ?? "br-01";
+        var declaredBy = _currentUser.Username ?? "Administrator";
+        var result = await _attendanceService.DeclareSpecialWorkingDayAsync(branchId, request, declaredBy);
+        return Ok(ApiResponse<SpecialWorkingDayDto>.Ok(result, "Special working day declared successfully"));
+    }
+
+    [HttpDelete("special-working-days/{dateOrId}")]
+    public async Task<ActionResult<ApiResponse<bool>>> RemoveSpecialWorkingDay(string dateOrId)
+    {
+        var branchId = Request.Headers["X-Campus-Id"].FirstOrDefault() ?? _currentUser.BranchId ?? "br-01";
+        var success = await _attendanceService.RemoveSpecialWorkingDayAsync(branchId, dateOrId);
+        return Ok(ApiResponse<bool>.Ok(success, success ? "Special working day declaration removed" : "Declaration not found"));
+    }
 }
