@@ -6,12 +6,13 @@ class ApiConstants {
   static const String defaultLocalDesktopUrl = 'http://127.0.0.1:5000/api/v1';
   static const String defaultAndroidEmulatorUrl = 'http://10.0.2.2:5000/api/v1';
   static const String defaultLanUrl = 'http://192.168.0.106:5000/api/v1';
-  static const String defaultTunnelUrl = 'https://amounts-josh-haven-strikes.trycloudflare.com/api/v1';
+  static const String defaultTunnelUrl = 'https://storm-injection-courier-parent.trycloudflare.com/api/v1';
 
   static String get initialDefaultUrl {
     if (kIsWeb) return defaultLocalDesktopUrl;
     try {
-      if (Platform.isAndroid) return defaultAndroidEmulatorUrl;
+      // Physical Android phone connects via the public Cloudflare tunnel
+      if (Platform.isAndroid) return defaultTunnelUrl;
     } catch (_) {}
     return defaultLocalDesktopUrl;
   }

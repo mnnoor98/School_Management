@@ -54,16 +54,25 @@ class ApiService {
   }
 
   Future<void> setBaseUrl(String newUrl) async {
-    _baseUrl = newUrl.trim();
-    if (_baseUrl.endsWith('/')) {
-      _baseUrl = _baseUrl.substring(0, _baseUrl.length - 1);
+    String cleaned = newUrl.trim();
+    if (cleaned.endsWith('/')) {
+      cleaned = cleaned.substring(0, cleaned.length - 1);
     }
+    // Automatically ensure /api/v1 is present
+    if (!cleaned.endsWith('/api/v1')) {
+      cleaned = '$cleaned/api/v1';
+    }
+
+    _baseUrl = cleaned;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(ApiConstants.keyBaseUrl, _baseUrl);
   }
 
   Future<Map<String, dynamic>> checkServerHealth([String? testUrl]) async {
-    final target = testUrl ?? _baseUrl;
+    String target = (testUrl ?? _baseUrl).trim();
+    if (target.endsWith('/')) {
+      target = target.substring(0, target.length - 1);
+    }
     String healthUrl = target;
     if (healthUrl.endsWith('/api/v1')) {
       healthUrl = healthUrl.substring(0, healthUrl.length - 7);
@@ -72,7 +81,7 @@ class ApiService {
 
     final stopwatch = Stopwatch()..start();
     try {
-      final res = await http.get(Uri.parse(healthUrl)).timeout(const Duration(seconds: 4));
+      final res = await http.get(Uri.parse(healthUrl)).timeout(const Duration(seconds: 5));
       stopwatch.stop();
       if (res.statusCode == 200) {
         return {'healthy': true, 'latency': stopwatch.elapsedMilliseconds};
@@ -96,7 +105,7 @@ class ApiService {
             'password': password.trim(),
           }),
         )
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 12));
 
     if (response.statusCode == 200) {
       final dynamic rootJson = jsonDecode(response.body);

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../core/theme/app_theme.dart';
 import '../core/services/api_service.dart';
-import '../core/constants/api_constants.dart';
 import 'dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -129,19 +129,48 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Specify the backend ERP API endpoint URL:',
-                    style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                    'On 4G mobile data or outside Wi-Fi, paste your Cloudflare Link (e.g. https://xxx.trycloudflare.com):',
+                    style: TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.3),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: urlController,
                     decoration: InputDecoration(
-                      labelText: 'API Base URL',
+                      labelText: 'Server URL or Link',
+                      hintText: 'https://xxx.trycloudflare.com',
                       prefixIcon: const Icon(Icons.link_rounded),
                       suffixIcon: IconButton(
                         icon: const Icon(Icons.clear, size: 18),
                         onPressed: () => urlController.clear(),
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Paste Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFEFF6FF),
+                        foregroundColor: AppTheme.primaryNavy,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: const BorderSide(color: Color(0xFFBFDBFE)),
+                        ),
+                      ),
+                      onPressed: () async {
+                        final data = await Clipboard.getData(Clipboard.kTextPlain);
+                        if (data?.text != null && data!.text!.trim().isNotEmpty) {
+                          setDialogState(() {
+                            urlController.text = data.text!.trim();
+                          });
+                        }
+                      },
+                      icon: const Icon(Icons.content_paste_rounded, size: 16),
+                      label: const Text('Paste Link from Clipboard', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -187,24 +216,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     runSpacing: 8,
                     children: [
                       ActionChip(
-                        avatar: const Icon(Icons.computer_rounded, size: 16),
-                        label: const Text('Local PC (127.0.0.1)'),
-                        onPressed: () => setDialogState(() => urlController.text = ApiConstants.defaultLocalDesktopUrl),
+                        avatar: const Icon(Icons.cloud_outlined, size: 16),
+                        label: const Text('Live Tunnel'),
+                        onPressed: () => setDialogState(() => urlController.text = 'https://storm-injection-courier-parent.trycloudflare.com'),
                       ),
                       ActionChip(
                         avatar: const Icon(Icons.wifi_rounded, size: 16),
-                        label: const Text('Wi-Fi LAN (192.168...)'),
-                        onPressed: () => setDialogState(() => urlController.text = ApiConstants.defaultLanUrl),
+                        label: const Text('Home Wi-Fi (192.168.0.106)'),
+                        onPressed: () => setDialogState(() => urlController.text = 'http://192.168.0.106:5000'),
                       ),
                       ActionChip(
-                        avatar: const Icon(Icons.phone_android_rounded, size: 16),
-                        label: const Text('Emulator (10.0.2.2)'),
-                        onPressed: () => setDialogState(() => urlController.text = ApiConstants.defaultAndroidEmulatorUrl),
-                      ),
-                      ActionChip(
-                        avatar: const Icon(Icons.cloud_outlined, size: 16),
-                        label: const Text('Cloudflare Tunnel'),
-                        onPressed: () => setDialogState(() => urlController.text = ApiConstants.defaultTunnelUrl),
+                        avatar: const Icon(Icons.computer_rounded, size: 16),
+                        label: const Text('Local PC (127.0.0.1)'),
+                        onPressed: () => setDialogState(() => urlController.text = 'http://127.0.0.1:5000'),
                       ),
                     ],
                   ),
@@ -223,7 +247,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           : () async {
                               setDialogState(() {
                                 isTesting = true;
-                                testResult = 'Pinging server...';
+                                testResult = 'Testing connection to server...';
                                 testSuccess = null;
                               });
                               final res = await ApiService().checkServerHealth(urlController.text);
@@ -231,10 +255,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                 isTesting = false;
                                 if (res['healthy'] == true) {
                                   testSuccess = true;
-                                  testResult = 'Connected! Latency: ${res['latency']} ms (200 OK)';
+                                  testResult = 'Online! Latency: ${res['latency']} ms (200 OK)';
                                 } else {
                                   testSuccess = false;
-                                  testResult = 'Connection failed: ${res['error'] ?? 'Unreachable'}';
+                                  testResult = 'Connection failed. Please check link.';
                                 }
                               });
                             },
@@ -261,7 +285,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   _checkServerStatus();
                   scaffold.showSnackBar(
                     SnackBar(
-                      content: Text('Server endpoint set to: ${ApiService().baseUrl}'),
+                      content: Text('Server connected to: ${ApiService().baseUrl}'),
                       backgroundColor: AppTheme.primaryNavy,
                     ),
                   );
@@ -294,8 +318,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Institutional Header Badge
                     Center(
                       child: Container(
-                        width: 84,
-                        height: 84,
+                        width: 80,
+                        height: 80,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
                             colors: [AppTheme.primaryNavy, Color(0xFF1E40AF)],
@@ -306,27 +330,27 @@ class _LoginScreenState extends State<LoginScreen> {
                           boxShadow: [
                             BoxShadow(
                               color: AppTheme.primaryNavy.withOpacity(0.35),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
+                              blurRadius: 18,
+                              offset: const Offset(0, 8),
                             ),
                           ],
                           border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
                         ),
                         child: const Icon(
                           Icons.school_rounded,
-                          size: 46,
+                          size: 44,
                           color: Colors.white,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
 
                     // Institution Titles
                     const Text(
                       'Scholars International Academy',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 22,
+                        fontSize: 21,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF0F172A),
                         letterSpacing: -0.3,
@@ -337,24 +361,71 @@ class _LoginScreenState extends State<LoginScreen> {
                       'Institutional ERP & Academic Management Portal',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: Color(0xFF64748B),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
+
+                    // Server Offline Guidance Banner
+                    if (!_isServerOnline && !_isCheckingHealth)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF3C7),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFF59E0B)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.cloud_off_rounded, color: Color(0xFFD97706), size: 22),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Server is currently Offline',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF92400E)),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  const Text(
+                                    'On 4G mobile data, please set your Cloudflare link.',
+                                    style: TextStyle(fontSize: 11, color: Color(0xFFB45309)),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  InkWell(
+                                    onTap: _showServerSettingsDialog,
+                                    child: const Text(
+                                      '⚙️ Tap here to connect server →',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                        color: Color(0xFFB45309),
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
                     // Main Card Container
                     Container(
-                      padding: const EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(22),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.05),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
                           ),
                         ],
                         border: Border.all(color: const Color(0xFFE2E8F0)),
@@ -422,7 +493,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               }),
                             ),
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 18),
 
                           // Error Message Box
                           if (_errorMessage != null)
@@ -452,22 +523,21 @@ class _LoginScreenState extends State<LoginScreen> {
                                             height: 1.3,
                                           ),
                                         ),
-                                        if (_errorMessage!.contains('Timeout') || _errorMessage!.contains('failed'))
-                                          Padding(
-                                            padding: const EdgeInsets.only(top: 6),
-                                            child: InkWell(
-                                              onTap: _showServerSettingsDialog,
-                                              child: const Text(
-                                                'Tap here to check Server Connection settings →',
-                                                style: TextStyle(
-                                                  color: AppTheme.primaryNavy,
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.bold,
-                                                  decoration: TextDecoration.underline,
-                                                ),
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 6),
+                                          child: InkWell(
+                                            onTap: _showServerSettingsDialog,
+                                            child: const Text(
+                                              'Tap here to check Server Connection settings →',
+                                              style: TextStyle(
+                                                color: AppTheme.primaryNavy,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                decoration: TextDecoration.underline,
                                               ),
                                             ),
                                           ),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -487,7 +557,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             validator: (v) => v == null || v.trim().isEmpty ? 'Please enter username' : null,
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 14),
 
                           // Password Field
                           TextFormField(
@@ -510,7 +580,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             validator: (v) => v == null || v.trim().isEmpty ? 'Please enter password' : null,
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 10),
 
                           // Remember Me & Forgot Password Row
                           Row(
@@ -545,11 +615,11 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 16),
 
                           // Submit Button with Gradient
                           Container(
-                            height: 50,
+                            height: 48,
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
                                 colors: [AppTheme.primaryNavy, Color(0xFF2563EB)],
@@ -560,8 +630,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               boxShadow: [
                                 BoxShadow(
                                   color: AppTheme.primaryNavy.withOpacity(0.3),
-                                  blurRadius: 14,
-                                  offset: const Offset(0, 6),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 5),
                                 ),
                               ],
                             ),
@@ -594,7 +664,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
 
                     // Smart Server Status Bar (Clickable)
                     Center(
@@ -636,7 +706,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               const SizedBox(width: 8),
                               Text(
                                 _isServerOnline
-                                    ? 'Server Online (${_serverLatency}ms) • ${ApiService().baseUrl.replaceAll('http://', '').replaceAll('/api/v1', '')}'
+                                    ? 'Server Online (${_serverLatency}ms)'
                                     : 'Server Offline • Tap to Configure',
                                 style: TextStyle(
                                   fontSize: 12,
@@ -651,7 +721,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     const Text(
                       'Scholars International Academy ERP v1.0 • Powered by Clean Architecture',
                       textAlign: TextAlign.center,
