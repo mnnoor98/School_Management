@@ -1,3 +1,3 @@
 @echo off
-cd /d "%~dp0publish"
-call Run_Online_Access.bat
+cd /d "%~dp0"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Run_Online_Access.ps1"
