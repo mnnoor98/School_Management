@@ -1,15 +1,17 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/api_constants.dart';
 import '../../models/user_model.dart';
+import 'dart:io' show Platform;
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
   ApiService._internal();
 
-  String _baseUrl = ApiConstants.defaultLocalUrl;
+  String _baseUrl = ApiConstants.initialDefaultUrl;
   String? _token;
   UserModel? _currentUser;
 
@@ -19,9 +21,24 @@ class ApiService {
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
-    _baseUrl = prefs.getString(ApiConstants.keyBaseUrl) ?? ApiConstants.defaultLocalUrl;
+    String? savedUrl = prefs.getString(ApiConstants.keyBaseUrl);
+
+    // Auto-correct if user had 10.0.2.2 saved on a desktop/web environment
+    bool isDesktopOrWeb = kIsWeb;
+    try {
+      if (!kIsWeb && !Platform.isAndroid && !Platform.isIOS) {
+        isDesktopOrWeb = true;
+      }
+    } catch (_) {}
+
+    if (savedUrl != null && savedUrl.contains('10.0.2.2') && isDesktopOrWeb) {
+      savedUrl = ApiConstants.defaultLocalDesktopUrl;
+      await prefs.setString(ApiConstants.keyBaseUrl, savedUrl);
+    }
+
+    _baseUrl = savedUrl ?? ApiConstants.initialDefaultUrl;
     _token = prefs.getString(ApiConstants.keyAuthToken);
-    
+
     final username = prefs.getString(ApiConstants.keyUsername);
     final fullName = prefs.getString(ApiConstants.keyFullName);
     final role = prefs.getString(ApiConstants.keyUserRole);
@@ -30,7 +47,7 @@ class ApiService {
       _currentUser = UserModel(
         username: username,
         fullName: fullName ?? username,
-        role: role ?? 'Admin',
+        role: role ?? 'Super Admin',
         token: _token!,
       );
     }
@@ -45,28 +62,59 @@ class ApiService {
     await prefs.setString(ApiConstants.keyBaseUrl, _baseUrl);
   }
 
+  Future<Map<String, dynamic>> checkServerHealth([String? testUrl]) async {
+    final target = testUrl ?? _baseUrl;
+    String healthUrl = target;
+    if (healthUrl.endsWith('/api/v1')) {
+      healthUrl = healthUrl.substring(0, healthUrl.length - 7);
+    }
+    healthUrl = '$healthUrl/health';
+
+    final stopwatch = Stopwatch()..start();
+    try {
+      final res = await http.get(Uri.parse(healthUrl)).timeout(const Duration(seconds: 4));
+      stopwatch.stop();
+      if (res.statusCode == 200) {
+        return {'healthy': true, 'latency': stopwatch.elapsedMilliseconds};
+      }
+      return {'healthy': false, 'error': 'Status ${res.statusCode}'};
+    } catch (e) {
+      stopwatch.stop();
+      return {'healthy': false, 'error': e.toString()};
+    }
+  }
+
   Future<UserModel> login(String username, String password) async {
     final url = Uri.parse('$_baseUrl${ApiConstants.loginEndpoint}');
-    
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'username': username.trim(),
-        'password': password.trim(),
-      }),
-    ).timeout(const Duration(seconds: 12));
+
+    final response = await http
+        .post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'username': username.trim(),
+            'password': password.trim(),
+          }),
+        )
+        .timeout(const Duration(seconds: 10));
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final token = data['token'] ?? data['accessToken'] ?? '';
-      
+      final dynamic rootJson = jsonDecode(response.body);
+      final Map<String, dynamic> data = rootJson is Map<String, dynamic>
+          ? (rootJson['data'] is Map<String, dynamic> ? rootJson['data'] : rootJson)
+          : <String, dynamic>{};
+
+      final String token = data['accessToken'] ?? data['token'] ?? '';
+      final Map<String, dynamic> userMap = data['user'] is Map<String, dynamic>
+          ? data['user']
+          : data;
+
       final user = UserModel(
-        username: username,
-        fullName: data['fullName'] ?? data['name'] ?? username,
-        role: data['role'] ?? 'Admin',
+        username: userMap['username'] ?? username,
+        fullName: userMap['fullName'] ?? userMap['name'] ?? username,
+        role: userMap['roleName'] ?? userMap['role'] ?? 'Super Admin',
         token: token,
-        branchId: data['branchId'],
+        branchId: userMap['branchId'],
       );
 
       _token = token;
@@ -80,7 +128,7 @@ class ApiService {
 
       return user;
     } else {
-      String errorMsg = 'Login failed (${response.statusCode})';
+      String errorMsg = 'Invalid credentials or login failed (${response.statusCode})';
       try {
         final err = jsonDecode(response.body);
         if (err['message'] != null) errorMsg = err['message'];
