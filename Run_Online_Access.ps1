@@ -9,7 +9,17 @@ Write-Host ""
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 if (!$scriptDir) { $scriptDir = (Get-Location).Path }
-Set-Location $scriptDir
+
+# Identify ERP Directory containing SchoolManagement.Api.exe and wwwroot
+$erpDir = $scriptDir
+if (Test-Path (Join-Path $scriptDir "publish\SchoolManagement.Api.exe")) {
+    $erpDir = Join-Path $scriptDir "publish"
+} elseif (Test-Path (Join-Path $scriptDir "SchoolManagement.Api.exe")) {
+    $erpDir = $scriptDir
+} elseif (Test-Path (Join-Path (Split-Path $scriptDir -Parent) "publish\SchoolManagement.Api.exe")) {
+    $erpDir = Join-Path (Split-Path $scriptDir -Parent) "publish"
+}
+Set-Location $erpDir
 
 # Clean up any lingering cloudflared processes from previous sessions
 Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
@@ -29,13 +39,12 @@ foreach ($svcName in $pgServices) {
 }
 
 # 2. Check cloudflared.exe
-$cfExe = Join-Path $scriptDir "cloudflared.exe"
+$cfExe = Join-Path $erpDir "cloudflared.exe"
 if (!(Test-Path $cfExe)) {
     $fallbackPaths = @(
+        (Join-Path $scriptDir "cloudflared.exe"),
         "G:\dotnetproject\School_management\tools\cloudflared.exe",
-        "G:\dotnetproject\School_management\publish\cloudflared.exe",
-        "E:\All_project_publish\school_managment\cloudflared.exe",
-        "E:\All_project_publish\cloudflared.exe"
+        "G:\dotnetproject\School_management\publish\cloudflared.exe"
     )
     foreach ($p in $fallbackPaths) {
         if (Test-Path $p) {
@@ -64,12 +73,12 @@ try {
 
 $erpProcess = $null
 if (!$isListening) {
-    Write-Host "[*] Initializing School ERP Local Server on Port 5000..." -ForegroundColor Cyan
-    $erpExe = Join-Path $scriptDir "SchoolManagement.Api.exe"
+    Write-Host "[*] Initializing School ERP Local Server on Port 5000 from: $erpDir..." -ForegroundColor Cyan
+    $erpExe = Join-Path $erpDir "SchoolManagement.Api.exe"
     if (Test-Path $erpExe) {
-        $erpProcess = Start-Process -FilePath $erpExe -ArgumentList "--urls=http://0.0.0.0:5000" -WorkingDirectory $scriptDir -PassThru -WindowStyle Hidden
+        $erpProcess = Start-Process -FilePath $erpExe -ArgumentList "--urls=http://0.0.0.0:5000" -WorkingDirectory $erpDir -PassThru -WindowStyle Hidden
     } else {
-        $erpProcess = Start-Process -FilePath "dotnet" -ArgumentList "SchoolManagement.Api.dll", "--urls=http://0.0.0.0:5000" -WorkingDirectory $scriptDir -PassThru -WindowStyle Hidden
+        $erpProcess = Start-Process -FilePath "dotnet" -ArgumentList (Join-Path $erpDir "SchoolManagement.Api.dll"), "--urls=http://0.0.0.0:5000" -WorkingDirectory $erpDir -PassThru -WindowStyle Hidden
     }
 } else {
     Write-Host "[*] Local ERP Server is already active on Port 5000." -ForegroundColor Green
@@ -78,7 +87,7 @@ if (!$isListening) {
 # Wait for local health check via IPv4 (127.0.0.1)
 Write-Host "[*] Verifying server health..." -ForegroundColor Gray
 $serverReady = $false
-for ($i = 0; $i -lt 30; $i++) {
+for ($i = 0; $i -lt 35; $i++) {
     try {
         $r = Invoke-WebRequest -Uri "http://127.0.0.1:5000/health" -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue
         if ($r.StatusCode -eq 200) {
@@ -89,11 +98,14 @@ for ($i = 0; $i -lt 30; $i++) {
     Start-Sleep -Seconds 1
 }
 
-if ($serverReady) {
-    Write-Host "[OK] School ERP server is healthy and responding." -ForegroundColor Green
-} else {
-    Write-Host "[!] Server health check pending, continuing tunnel connection..." -ForegroundColor Yellow
+if (!$serverReady) {
+    Write-Host "[ERROR] School ERP server failed to respond on Port 5000 within 35 seconds." -ForegroundColor Red
+    Write-Host "Please check PostgreSQL connection or run publish\SchoolManagement.Api.exe directly to inspect logs." -ForegroundColor Red
+    Read-Host "Press ENTER to exit..."
+    exit 1
 }
+
+Write-Host "[OK] School ERP server is healthy and responding (200 OK)." -ForegroundColor Green
 
 # 4. Start Cloudflare Tunnel
 Write-Host "[*] Creating Secure Cloudflare Tunnel for 4G/5G mobile access..." -ForegroundColor Cyan
@@ -137,7 +149,7 @@ if ($publicUrl) {
     Write-Host ""
     Write-Host "===============================================================================" -ForegroundColor Green
 
-    $txtFile = Join-Path $scriptDir "ONLINE_MOBILE_LINK.txt"
+    $txtFile = Join-Path $erpDir "ONLINE_MOBILE_LINK.txt"
     $fileContent = @"
 ===============================================================================
      SCHOLARS INTERNATIONAL ACADEMY - ONLINE MOBILE ACCESS LINK
@@ -160,10 +172,10 @@ When finished, close that window or run Stop_Online_Access.bat.
 "@
     Set-Content -Path $txtFile -Value $fileContent -Encoding UTF8
     
-    # Also copy to parent directory if applicable (e.g. E:\All_project_publish)
-    $parentDir = Split-Path $scriptDir -Parent
-    if ($parentDir -and (Test-Path $parentDir)) {
-        Copy-Item $txtFile (Join-Path $parentDir "ONLINE_MOBILE_LINK.txt") -Force -ErrorAction SilentlyContinue
+    # Also copy to root workspace folder (G:\dotnetproject\School_management)
+    $rootWorkspace = "G:\dotnetproject\School_management"
+    if (Test-Path $rootWorkspace) {
+        Copy-Item $txtFile (Join-Path $rootWorkspace "ONLINE_MOBILE_LINK.txt") -Force -ErrorAction SilentlyContinue
     }
     
     # Also copy to user Desktop for instant convenience
