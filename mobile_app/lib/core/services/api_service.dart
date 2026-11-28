@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async' show TimeoutException;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,17 +24,15 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     String? savedUrl = prefs.getString(ApiConstants.keyBaseUrl);
 
-    // Auto-correct if user had 10.0.2.2 saved on a desktop/web environment
-    bool isDesktopOrWeb = kIsWeb;
-    try {
-      if (!kIsWeb && !Platform.isAndroid && !Platform.isIOS) {
-        isDesktopOrWeb = true;
+    // Auto-correct obsolete or unreachable saved URLs
+    if (savedUrl != null) {
+      if (savedUrl.contains('storm-injection-courier-parent')) {
+        savedUrl = ApiConstants.defaultTunnelUrl;
+        await prefs.setString(ApiConstants.keyBaseUrl, savedUrl);
+      } else if (savedUrl.contains('10.0.2.2')) {
+        savedUrl = ApiConstants.initialDefaultUrl;
+        await prefs.setString(ApiConstants.keyBaseUrl, savedUrl);
       }
-    } catch (_) {}
-
-    if (savedUrl != null && savedUrl.contains('10.0.2.2') && isDesktopOrWeb) {
-      savedUrl = ApiConstants.defaultLocalDesktopUrl;
-      await prefs.setString(ApiConstants.keyBaseUrl, savedUrl);
     }
 
     _baseUrl = savedUrl ?? ApiConstants.initialDefaultUrl;
@@ -96,16 +95,26 @@ class ApiService {
   Future<UserModel> login(String username, String password) async {
     final url = Uri.parse('$_baseUrl${ApiConstants.loginEndpoint}');
 
-    final response = await http
-        .post(
-          url,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'username': username.trim(),
-            'password': password.trim(),
-          }),
-        )
-        .timeout(const Duration(seconds: 12));
+    http.Response response;
+    try {
+      response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'username': username.trim(),
+              'password': password.trim(),
+            }),
+          )
+          .timeout(const Duration(seconds: 12));
+    } on TimeoutException {
+      throw Exception('Connection timed out connecting to $_baseUrl. Tap "Configure Server" below to switch to Cloudflare Tunnel or Local PC.');
+    } catch (e) {
+      if (e.toString().contains('Failed host lookup') || e.toString().contains('Connection refused') || e.toString().contains('SocketException')) {
+        throw Exception('Cannot reach server at $_baseUrl. Check your connection or tap "Configure Server".');
+      }
+      rethrow;
+    }
 
     if (response.statusCode == 200) {
       final dynamic rootJson = jsonDecode(response.body);

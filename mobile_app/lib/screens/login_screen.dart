@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/theme/app_theme.dart';
 import '../core/services/api_service.dart';
+import '../core/constants/api_constants.dart';
 import 'dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -51,7 +52,19 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     setState(() => _isCheckingHealth = true);
 
-    final res = await ApiService().checkServerHealth();
+    var res = await ApiService().checkServerHealth();
+    if (res['healthy'] != true && mounted) {
+      // Auto-failover: test if tunnel or local desktop is reachable
+      final altUrl = ApiService().baseUrl.contains('trycloudflare.com')
+          ? ApiConstants.defaultLocalDesktopUrl
+          : ApiConstants.defaultTunnelUrl;
+      final altRes = await ApiService().checkServerHealth(altUrl);
+      if (altRes['healthy'] == true) {
+        await ApiService().setBaseUrl(altUrl);
+        res = altRes;
+      }
+    }
+
     if (!mounted) return;
 
     setState(() {
@@ -217,8 +230,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       ActionChip(
                         avatar: const Icon(Icons.cloud_outlined, size: 16),
-                        label: const Text('Live Tunnel'),
-                        onPressed: () => setDialogState(() => urlController.text = 'https://storm-injection-courier-parent.trycloudflare.com'),
+                        label: const Text('Live Tunnel (Cloudflare)'),
+                        onPressed: () => setDialogState(() => urlController.text = 'https://dos-affect-equipment-opened.trycloudflare.com'),
                       ),
                       ActionChip(
                         avatar: const Icon(Icons.wifi_rounded, size: 16),
@@ -378,38 +391,65 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(color: const Color(0xFFF59E0B)),
                         ),
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.cloud_off_rounded, color: Color(0xFFD97706), size: 22),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Server is currently Offline',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF92400E)),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  const Text(
-                                    'On 4G mobile data, please set your Cloudflare link.',
-                                    style: TextStyle(fontSize: 11, color: Color(0xFFB45309)),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  InkWell(
-                                    onTap: _showServerSettingsDialog,
-                                    child: const Text(
-                                      '⚙️ Tap here to connect server →',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                        color: Color(0xFFB45309),
-                                        decoration: TextDecoration.underline,
+                            Row(
+                              children: [
+                                const Icon(Icons.cloud_off_rounded, color: Color(0xFFD97706), size: 22),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Server is currently Offline',
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF92400E)),
                                       ),
-                                    ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Target: ${ApiService().baseUrl}',
+                                        style: const TextStyle(fontSize: 10, color: Color(0xFFB45309)),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: [
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.primaryNavy,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                  onPressed: () async {
+                                    await ApiService().setBaseUrl(ApiConstants.defaultTunnelUrl);
+                                    _checkServerStatus();
+                                  },
+                                  icon: const Icon(Icons.cloud_done_rounded, size: 14),
+                                  label: const Text('Connect Cloudflare (4G/Wi-Fi)', style: TextStyle(fontSize: 11)),
+                                ),
+                                OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppTheme.primaryNavy,
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                  onPressed: () async {
+                                    await ApiService().setBaseUrl(ApiConstants.defaultLocalDesktopUrl);
+                                    _checkServerStatus();
+                                  },
+                                  icon: const Icon(Icons.computer_rounded, size: 14),
+                                  label: const Text('Connect Local PC', style: TextStyle(fontSize: 11)),
+                                ),
+                              ],
                             ),
                           ],
                         ),

@@ -121,9 +121,22 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
                 {
                     var originalSchool = entry.OriginalValues.GetValue<string>("SchoolId");
                     var originalBranch = entry.OriginalValues.GetValue<string>("BranchId");
-                    if (originalSchool != ScopeSchool || user.SchoolId != originalSchool || user.BranchId != originalBranch
-                        || (user.Id != ScopeUser && (!IsSuperAdmin && originalBranch != ScopeBranch)))
-                        throw new UnauthorizedAccessException("Account is outside the active campus.");
+                    if (originalSchool != ScopeSchool || user.SchoolId != originalSchool)
+                        throw new UnauthorizedAccessException("Account belongs to another school.");
+
+                    if (IsSuperAdmin)
+                    {
+                        if (!string.IsNullOrEmpty(user.BranchId) && user.BranchId != originalBranch)
+                        {
+                            if (!await Branches.AnyAsync(b => b.Id == user.BranchId && b.SchoolId == ScopeSchool, cancellationToken))
+                                throw new ArgumentException("Assigned campus does not belong to this school.");
+                        }
+                    }
+                    else
+                    {
+                        if (user.BranchId != originalBranch || (user.Id != ScopeUser && originalBranch != ScopeBranch))
+                            throw new UnauthorizedAccessException("Account is outside the active campus.");
+                    }
                 }
                 if (!Roles.Local.Any(r => r.Id == user.RoleId && r.SchoolId == ScopeSchool && r.IsActive)
                     && !await Roles.AnyAsync(r => r.Id == user.RoleId && r.SchoolId == ScopeSchool && r.IsActive, cancellationToken))
