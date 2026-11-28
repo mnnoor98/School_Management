@@ -41,7 +41,7 @@ public class SchoolController : ControllerBase
         var (branch, error) = await _schoolService.AddBranchAsync(request);
         if (!string.IsNullOrEmpty(error))
         {
-            return BadRequest(ApiResponse<Branch>.Fail(error));
+            return BadRequest(ApiResponse<Branch>.Fail(error, error));
         }
 
         return Ok(ApiResponse<Branch>.Ok(branch!, "New campus created successfully"));

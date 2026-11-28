@@ -490,9 +490,22 @@ export class SchoolSetupComponent implements OnInit {
   openAddBranchModal() {
     this.isEditingBranch = false;
     this.editingBranchId = '';
-    const nextNum = this.branches.length + 1;
+    
+    // Safely calculate the next unique branch code based on existing branches
+    let maxNum = 0;
+    for (const b of this.branches) {
+      const match = b.code?.match(/BR-(\d+)/i);
+      if (match) {
+        const n = parseInt(match[1], 10);
+        if (n > maxNum) maxNum = n;
+      }
+    }
+    const nextCode = maxNum > 0
+      ? `BR-${String(maxNum + 1).padStart(2, '0')}`
+      : `BR-${String(this.branches.length + 1).padStart(2, '0')}`;
+
     this.branchForm = {
-      code: `BR-0${nextNum}`,
+      code: nextCode,
       name: '',
       address: '',
       phone: '',
@@ -551,7 +564,8 @@ export class SchoolSetupComponent implements OnInit {
       },
       error: err => {
         this.isSubmittingBranch = false;
-        this.toast.error('Error', err?.error?.message || 'Could not save branch.');
+        const msg = err?.error?.errors?.[0] || err?.error?.message || 'Could not save branch.';
+        this.toast.error('Error', msg);
         this.cdr.markForCheck();
       }
     });
