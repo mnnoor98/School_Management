@@ -16,9 +16,13 @@ public class UserService : IUserService
         _context = context;
     }
 
-    public async Task<List<UserProfileDto>> GetUsersAsync(string branchId)
+    public async Task<List<UserProfileDto>> GetUsersAsync(string branchId, bool isSuperAdmin = false)
     {
-        var query = _context.Users.AsNoTracking().Where(u => u.BranchId == branchId);
+        var query = _context.Users.AsNoTracking();
+        if (!string.IsNullOrEmpty(branchId))
+        {
+            query = query.Where(u => u.BranchId == branchId);
+        }
 
         return await query
             .OrderBy(u => u.RoleName)
@@ -105,7 +109,7 @@ public class UserService : IUserService
             RoleId = roleId,
             RoleName = roleName,
             SchoolId = currentSchoolId,
-            BranchId = currentBranchId,
+            BranchId = (!string.IsNullOrWhiteSpace(request.BranchId) && isSuperAdmin) ? request.BranchId.Trim() : currentBranchId,
             Avatar = string.IsNullOrWhiteSpace(request.Avatar) ? defaultAvatar : request.Avatar,
             Phone = request.Phone?.Trim() ?? "+880 1700-000000",
             IsActive = true,
@@ -140,15 +144,27 @@ public class UserService : IUserService
         return (dto, null);
     }
 
-    public async Task<(UserProfileDto? User, string? Error)> UpdateUserAsync(string id, UpdateUserRequest request, string branchId)
+    public async Task<(UserProfileDto? User, string? Error)> UpdateUserAsync(string id, UpdateUserRequest request, string branchId, bool isSuperAdmin = false)
     {
-        var user = await _context.Users.Include(u => u.UserRoles).FirstOrDefaultAsync(u => u.Id == id && u.BranchId == branchId);
+        var user = isSuperAdmin
+            ? await _context.Users.Include(u => u.UserRoles).FirstOrDefaultAsync(u => u.Id == id)
+            : await _context.Users.Include(u => u.UserRoles).FirstOrDefaultAsync(u => u.Id == id && u.BranchId == branchId);
+
         if (user == null) return (null, "User not found");
 
         user.FullName = request.FullName.Trim();
         user.Email = request.Email.Trim();
         user.Phone = request.Phone?.Trim() ?? user.Phone;
         user.IsActive = request.IsActive;
+
+        if (isSuperAdmin && !string.IsNullOrWhiteSpace(request.BranchId) && request.BranchId != user.BranchId)
+        {
+            var branchExists = await _context.Branches.AnyAsync(b => b.Id == request.BranchId.Trim());
+            if (branchExists)
+            {
+                user.BranchId = request.BranchId.Trim();
+            }
+        }
 
         if (!string.IsNullOrEmpty(request.RoleId) && request.RoleId != user.RoleId)
         {

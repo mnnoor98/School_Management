@@ -936,7 +936,7 @@ export class AdminLayoutComponent implements OnInit {
     const u = this.currentUser;
     if (!u) return 'Main Campus';
     const b = this.branches.find(x => x.id === u.branchId);
-    return b ? b.name : (u.branchId === 'br-02' ? 'Uttara Campus' : 'Main Campus (Dhanmondi)');
+    return b ? b.name : (u.branchId ? u.branchId : 'Main Campus');
   }
 
   dynamicMenus: MenuItem[] = [];
@@ -995,6 +995,8 @@ export class AdminLayoutComponent implements OnInit {
     this.db.getUserOverrides$().subscribe(() => {
       this.refreshMenu();
     });
+
+    this.db.refreshAllFromBackend();
   }
 
   refreshMenu() {

@@ -128,6 +128,14 @@ interface UserPermissionRow {
                 />
               </div>
 
+              <div class="filter-item" *ngIf="isSuperAdmin && branches.length > 0">
+                <label class="filter-lbl">Campus:</label>
+                <select [(ngModel)]="selectedCampusFilter" class="form-select form-select-sm">
+                  <option value="ALL">All Campuses</option>
+                  <option *ngFor="let b of branches" [value]="b.id">📍 {{ b.name }}</option>
+                </select>
+              </div>
+
               <div class="filter-item">
                 <label class="filter-lbl">Role:</label>
                 <select [(ngModel)]="selectedRoleFilter" class="form-select form-select-sm">
@@ -164,6 +172,7 @@ interface UserPermissionRow {
                 <tr>
                   <th>User Profile</th>
                   <th>Username</th>
+                  <th>Assigned Campus</th>
                   <th>Assigned Role</th>
                   <th>Contact Details</th>
                   <th>Account Status</th>
@@ -178,12 +187,14 @@ interface UserPermissionRow {
                       <div>
                         <strong class="user-table-name">{{ u.fullName }}</strong>
                         <span class="user-id-code">ID: {{ u.id }}</span>
-                        <span class="campus-sub-tag" *ngIf="activeBranch">{{ activeBranch.name }}</span>
                       </div>
                     </div>
                   </td>
                   <td>
                     <code class="code-tag">{{ u.username }}</code>
+                  </td>
+                  <td>
+                    <span class="campus-code-badge">📍 {{ getUserBranchName(u.branchId) }}</span>
                   </td>
                   <td>
                     <app-badge [variant]="getRoleBadgeVariant(u.roleName)" [label]="u.roleName"></app-badge>
@@ -430,6 +441,14 @@ interface UserPermissionRow {
           </div>
         </div>
 
+        <div class="form-group" *ngIf="isSuperAdmin && branches.length > 0">
+          <label class="form-label">Assigned Campus / Branch <span class="required">*</span></label>
+          <select class="form-select" [(ngModel)]="createForm.branchId">
+            <option *ngFor="let b of branches" [value]="b.id">📍 {{ b.name }} ({{ b.code }})</option>
+          </select>
+          <small class="text-xs text-muted">Select which campus this user account will belong to.</small>
+        </div>
+
         <div class="grid-2">
           <div class="form-group">
             <label class="form-label">Username <span class="required">*</span></label>
@@ -483,6 +502,14 @@ interface UserPermissionRow {
       (closed)="closeEditModal()"
     >
       <div body class="modal-form">
+        <div class="form-group" *ngIf="isSuperAdmin && branches.length > 0">
+          <label class="form-label">Assigned Campus / Branch <span class="required">*</span></label>
+          <select class="form-select" [(ngModel)]="editForm.branchId">
+            <option *ngFor="let b of branches" [value]="b.id">📍 {{ b.name }} ({{ b.code }})</option>
+          </select>
+          <small class="text-xs text-muted">Change which campus this user account is assigned to.</small>
+        </div>
+
         <div class="form-group">
           <label class="form-label">Full Name <span class="required">*</span></label>
           <input type="text" class="form-control" [(ngModel)]="editForm.fullName" />
@@ -1074,6 +1101,7 @@ export class UserPermissionsComponent implements OnInit, OnDestroy {
   searchTerm = '';
   selectedRoleFilter = 'ALL';
   selectedStatusFilter = 'ALL';
+  selectedCampusFilter = 'ALL';
 
   // Override Matrix state
   selectedUserId = '';
@@ -1092,6 +1120,7 @@ export class UserPermissionsComponent implements OnInit, OnDestroy {
     email: '',
     phone: '',
     roleId: '',
+    branchId: '',
     password: 'password123'
   };
 
@@ -1103,6 +1132,7 @@ export class UserPermissionsComponent implements OnInit, OnDestroy {
     email: '',
     phone: '',
     roleId: '',
+    branchId: '',
     isActive: true
   };
 
@@ -1185,8 +1215,18 @@ export class UserPermissionsComponent implements OnInit, OnDestroy {
     }
   }
 
+  getUserBranchName(branchId: string | undefined): string {
+    if (!branchId) return 'Main Campus';
+    const b = this.branches.find(x => x.id === branchId);
+    return b ? b.name : (branchId === 'br-02' ? 'Uttara Campus' : branchId);
+  }
+
   get filteredUsers(): User[] {
     let list = this.users;
+
+    if (this.selectedCampusFilter !== 'ALL') {
+      list = list.filter(u => u.branchId === this.selectedCampusFilter);
+    }
 
     if (this.selectedRoleFilter !== 'ALL') {
       list = list.filter(u => u.roleName === this.selectedRoleFilter);
@@ -1311,6 +1351,7 @@ export class UserPermissionsComponent implements OnInit, OnDestroy {
       email: '',
       phone: '',
       roleId: this.roles[0]?.id || 'role-teacher',
+      branchId: this.activeBranch?.id || (this.branches[0]?.id ?? 'br-01'),
       password: 'password123'
     };
     this.isCreateModalOpen = true;
@@ -1337,12 +1378,13 @@ export class UserPermissionsComponent implements OnInit, OnDestroy {
       roleId: this.createForm.roleId,
       roleName: selectedRole?.name || 'Teacher',
       password: this.createForm.password.trim() || 'password123',
-      branchId: this.activeBranch?.id
+      branchId: this.createForm.branchId || this.activeBranch?.id
     }).subscribe({
       next: async res => {
         this.isSubmitting = false;
         if (res && res.success) {
-          this.toast.success('Account Created', `User ${res.data.fullName} registered for ${this.activeBranch?.name || 'Campus'}.`);
+          const targetBranchName = this.getUserBranchName(this.createForm.branchId || this.activeBranch?.id);
+          this.toast.success('Account Created', `User ${res.data.fullName} registered for ${targetBranchName}.`);
           this.closeCreateModal();
           await this.db.refreshAllFromBackend();
           this.cdr.markForCheck();
@@ -1365,6 +1407,7 @@ export class UserPermissionsComponent implements OnInit, OnDestroy {
       email: u.email,
       phone: u.phone || '',
       roleId: u.roleId,
+      branchId: u.branchId || this.activeBranch?.id || 'br-01',
       isActive: u.isActive
     };
     this.isEditModalOpen = true;
@@ -1381,13 +1424,20 @@ export class UserPermissionsComponent implements OnInit, OnDestroy {
     }
 
     this.isSubmitting = true;
-    this.db.updateUser(this.editingUserId, this.editForm).subscribe({
-      next: res => {
+    this.db.updateUser(this.editingUserId, {
+      fullName: this.editForm.fullName.trim(),
+      email: this.editForm.email.trim(),
+      phone: this.editForm.phone?.trim() ?? '',
+      roleId: this.editForm.roleId,
+      branchId: this.editForm.branchId,
+      isActive: this.editForm.isActive
+    }).subscribe({
+      next: async res => {
         this.isSubmitting = false;
         if (res && res.success) {
           this.toast.success('Profile Updated', 'User account updated successfully in database.');
           this.closeEditModal();
-          this.db.refreshAllFromBackend();
+          await this.db.refreshAllFromBackend();
           this.cdr.markForCheck();
         } else {
           this.toast.error('Error', res?.message || 'Could not update user.');

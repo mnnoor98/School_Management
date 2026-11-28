@@ -65,6 +65,7 @@ public class UpdateUserRequest
     public string Email { get; set; } = string.Empty;
     public string? Phone { get; set; }
     public string? RoleId { get; set; }
+    public string? BranchId { get; set; }
     public bool IsActive { get; set; } = true;
 }
 

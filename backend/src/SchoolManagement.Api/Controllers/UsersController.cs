@@ -24,9 +24,10 @@ public class UsersController : ControllerBase
 
     [HttpGet]
     [Authorize(Policy = SchoolManagement.Api.Security.SecurityPolicies.CampusAdministrator)]
-    public async Task<ActionResult<ApiResponse<List<UserProfileDto>>>> GetUsers()
+    public async Task<ActionResult<ApiResponse<List<UserProfileDto>>>> GetUsers([FromQuery] string? branchId)
     {
-        var users = await _userService.GetUsersAsync(_currentUser.BranchId);
+        var targetBranch = !string.IsNullOrEmpty(branchId) ? branchId : (_currentUser.IsSuperAdmin ? null : _currentUser.BranchId);
+        var users = await _userService.GetUsersAsync(targetBranch ?? "", _currentUser.IsSuperAdmin);
         return Ok(ApiResponse<List<UserProfileDto>>.Ok(users));
     }
 
@@ -47,7 +48,7 @@ public class UsersController : ControllerBase
     [Authorize(Policy = SchoolManagement.Api.Security.SecurityPolicies.CampusAdministrator)]
     public async Task<ActionResult<ApiResponse<UserProfileDto>>> UpdateUser(string id, [FromBody] UpdateUserRequest request)
     {
-        var (user, error) = await _userService.UpdateUserAsync(id, request, _currentUser.BranchId);
+        var (user, error) = await _userService.UpdateUserAsync(id, request, _currentUser.BranchId, _currentUser.IsSuperAdmin);
         if (!string.IsNullOrEmpty(error))
         {
             return error == "User not found"
