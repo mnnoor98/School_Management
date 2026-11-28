@@ -441,7 +441,7 @@ interface UserPermissionRow {
           </div>
         </div>
 
-        <div class="form-group" *ngIf="isSuperAdmin && branches.length > 0">
+        <div class="form-group">
           <label class="form-label">Assigned Campus / Branch <span class="required">*</span></label>
           <select class="form-select" [(ngModel)]="createForm.branchId">
             <option *ngFor="let b of branches" [value]="b.id">📍 {{ b.name }} ({{ b.code }})</option>
@@ -502,7 +502,7 @@ interface UserPermissionRow {
       (closed)="closeEditModal()"
     >
       <div body class="modal-form">
-        <div class="form-group" *ngIf="isSuperAdmin && branches.length > 0">
+        <div class="form-group">
           <label class="form-label">Assigned Campus / Branch <span class="required">*</span></label>
           <select class="form-select" [(ngModel)]="editForm.branchId">
             <option *ngFor="let b of branches" [value]="b.id">📍 {{ b.name }} ({{ b.code }})</option>
