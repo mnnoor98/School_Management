@@ -6,7 +6,7 @@ class ApiConstants {
   static const String defaultLocalDesktopUrl = 'http://127.0.0.1:5000/api/v1';
   static const String defaultAndroidEmulatorUrl = 'http://10.0.2.2:5000/api/v1';
   static const String defaultLanUrl = 'http://192.168.0.106:5000/api/v1';
-  static const String defaultTunnelUrl = 'https://dos-affect-equipment-opened.trycloudflare.com/api/v1';
+  static const String defaultTunnelUrl = 'https://iii-area-conferencing-foundations.trycloudflare.com/api/v1';
 
   static String get initialDefaultUrl {
     if (kIsWeb) return defaultLocalDesktopUrl;

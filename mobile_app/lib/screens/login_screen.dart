@@ -231,7 +231,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ActionChip(
                         avatar: const Icon(Icons.cloud_outlined, size: 16),
                         label: const Text('Live Tunnel (Cloudflare)'),
-                        onPressed: () => setDialogState(() => urlController.text = 'https://dos-affect-equipment-opened.trycloudflare.com'),
+                        onPressed: () => setDialogState(() => urlController.text = 'https://iii-area-conferencing-foundations.trycloudflare.com'),
                       ),
                       ActionChip(
                         avatar: const Icon(Icons.wifi_rounded, size: 16),
