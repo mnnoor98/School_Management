@@ -8,6 +8,7 @@ import { CampusSessionService } from '../../core/services/campus-session.service
 import { ToastService } from '../../core/services/toast.service';
 import { Student, SchoolClass, Section, Branch, AcademicYear, LookupOption, DistrictLookup, DivisionLookup, AdmissionLookups } from '../../core/models';
 import { AuthService } from '../../core/services/auth.service';
+import { compressAndResizeImage } from '../../core/utils/image-optimizer.util';
 import { CampusImageDirective } from '../../shared/components/campus-image.directive';
 import { IconComponent } from '../../shared/components/icon.component';
 
@@ -2205,25 +2206,22 @@ export class AdmissionComponent implements OnInit {
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      this.toast.error('File Too Large', 'Student photo size must be less than 5MB.');
-      event.target.value = '';
-      return;
-    }
-
-    // Generate local preview immediately for fluid UX
-    const reader = new FileReader();
-    reader.onload = () => {
-      this.photoPreviewUrl = reader.result as string;
-    };
-    reader.readAsDataURL(file);
-
     this.isUploadingPhoto = true;
     try {
-      const res = await this.authService.uploadFile(file, 'students');
+      // Automatically optimize and resize image regardless of original MB size
+      const optimizedFile = await compressAndResizeImage(file);
+
+      // Generate local preview immediately for fluid UX
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.photoPreviewUrl = reader.result as string;
+      };
+      reader.readAsDataURL(optimizedFile);
+
+      const res = await this.authService.uploadFile(optimizedFile, 'students');
       if (res && res.url) {
         this.formData.photoUrl = res.url;
-        this.toast.success('Photo Uploaded', 'Student picture attached successfully.');
+        this.toast.success('Photo Uploaded', `Student picture attached successfully (${Math.round(optimizedFile.size / 1024)} KB).`);
       } else {
         this.toast.error('Upload Failed', 'Could not upload student photo. Please try again.');
         this.photoPreviewUrl = null;

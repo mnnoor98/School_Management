@@ -21,6 +21,8 @@ interface LoginResponse {
   user: User;
 }
 
+import { compressAndResizeImage } from '../utils/image-optimizer.util';
+
 @Injectable({
   providedIn: 'root'
 })
@@ -384,8 +386,17 @@ export class AuthService {
   }
 
   async uploadFile(file: File, folder: string = 'general'): Promise<{ url: string; fileName: string } | null> {
+    let fileToUpload = file;
+    if (file.type && file.type.startsWith('image/')) {
+      try {
+        fileToUpload = await compressAndResizeImage(file);
+      } catch (e) {
+        console.warn('Image optimization skipped:', e);
+      }
+    }
+
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', fileToUpload);
     formData.append('folder', folder);
 
     try {

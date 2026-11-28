@@ -11,6 +11,7 @@ import { FinanceStoreService } from '../../core/services/stores/finance-store.se
 import { ExamStoreService } from '../../core/services/stores/exam-store.service';
 import { SystemStoreService } from '../../core/services/stores/system-store.service';
 import { CampusSessionService } from '../../core/services/campus-session.service';
+import { compressAndResizeImage } from '../../core/utils/image-optimizer.util';
 import { Student, SchoolClass, Section, StudentInvoice, ExamMark, AcademicYear, DivisionLookup, DistrictLookup, LookupOption } from '../../core/models';
 import { ModalComponent } from '../../shared/components/modal.component';
 import { BadgeComponent } from '../../shared/components/badge.component';
@@ -2451,26 +2452,23 @@ export class StudentListComponent implements OnInit {
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      this.toast.error('File Too Large', 'Student photo size must be less than 5MB.');
-      event.target.value = '';
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      this.editPhotoPreview = reader.result as string;
-      this.cdr.markForCheck();
-    };
-    reader.readAsDataURL(file);
-
     this.isUploadingEditPhoto = true;
     this.cdr.markForCheck();
     try {
-      const res = await this.auth.uploadFile(file, 'students');
+      // Automatically optimize and resize image regardless of original MB size
+      const optimizedFile = await compressAndResizeImage(file);
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.editPhotoPreview = reader.result as string;
+        this.cdr.markForCheck();
+      };
+      reader.readAsDataURL(optimizedFile);
+
+      const res = await this.auth.uploadFile(optimizedFile, 'students');
       if (res && res.url) {
         this.editForm.photoUrl = res.url;
-        this.toast.success('Photo Uploaded', 'Student picture updated.');
+        this.toast.success('Photo Uploaded', `Student picture updated (${Math.round(optimizedFile.size / 1024)} KB).`);
       } else {
         this.toast.error('Upload Failed', 'Could not upload student picture.');
         this.editPhotoPreview = null;

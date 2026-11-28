@@ -19,7 +19,7 @@ public class FilesController : ControllerBase
         ".jpg", ".jpeg", ".png", ".webp", ".gif", ".pdf", ".doc", ".docx", ".xls", ".xlsx"
     };
 
-    private const long MaxFileSize = 10 * 1024 * 1024; // 10 MB
+    private const long MaxFileSize = 30 * 1024 * 1024; // 30 MB
 
     public FilesController(IWebHostEnvironment environment, ICampusContext campus)
     {
